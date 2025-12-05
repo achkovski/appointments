@@ -17,11 +17,13 @@
   "author": "achkovski",
   "license": "ISC",
   "dependencies": {
+    "@prisma/client": "^7.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "prisma": "^7.1.0"
   }
 }
