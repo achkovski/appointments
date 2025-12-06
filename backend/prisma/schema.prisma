@@ -1,0 +1,257 @@
+// Prisma schema for Appointments Management System
+// Database: PostgreSQL (Neon)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User model - Business users and clients
+model User {
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  passwordHash           String    @map("password_hash")
+  firstName              String    @map("first_name")
+  lastName               String    @map("last_name")
+  role                   UserRole  @default(BUSINESS)
+  phone                  String?
+  emailVerified          Boolean   @default(false) @map("email_verified")
+  emailVerificationToken String?   @map("email_verification_token")
+  resetPasswordToken     String?   @map("reset_password_token")
+  resetPasswordExpires   DateTime? @map("reset_password_expires")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  businesses   Business[]
+  appointments Appointment[] @relation("ClientAppointments")
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  BUSINESS
+  CLIENT
+}
+
+// Business model - Service provider businesses
+model Business {
+  id                       String       @id @default(uuid())
+  ownerId                  String       @map("owner_id")
+  businessName             String       @map("business_name")
+  slug                     String       @unique
+  description              String?      @db.Text
+  address                  String?      @db.Text
+  phone                    String?
+  email                    String?
+  website                  String?
+  businessType             String?      @map("business_type")
+  qrCodeUrl                String?      @map("qr_code_url")
+  capacityMode             CapacityMode @default(SINGLE) @map("capacity_mode")
+  defaultCapacity          Int?         @default(1) @map("default_capacity")
+  defaultSlotInterval      Int          @default(15) @map("default_slot_interval")
+  autoConfirm              Boolean      @default(true) @map("auto_confirm")
+  requireEmailConfirmation Boolean      @default(false) @map("require_email_confirmation")
+  settings                 Json?
+  createdAt                DateTime     @default(now()) @map("created_at")
+  updatedAt                DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  owner        User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  services     Service[]
+  appointments Appointment[]
+  availability Availability[]
+  specialDates SpecialDate[]
+  analytics    Analytics[]
+
+  @@index([ownerId])
+  @@index([slug])
+  @@map("businesses")
+}
+
+enum CapacityMode {
+  SINGLE // One appointment per time slot
+  MULTIPLE // Multiple concurrent appointments
+}
+
+// Service model - Services offered by businesses
+model Service {
+  id           String   @id @default(uuid())
+  businessId   String   @map("business_id")
+  name         String
+  description  String?  @db.Text
+  duration     Int // Duration in minutes
+  price        Decimal? @db.Decimal(10, 2)
+  isActive     Boolean  @default(true) @map("is_active")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([businessId])
+  @@index([businessId, isActive])
+  @@map("services")
+}
+
+// Appointment model - Booked appointments
+model Appointment {
+  id                     String            @id @default(uuid())
+  businessId             String            @map("business_id")
+  serviceId              String            @map("service_id")
+  clientUserId           String?           @map("client_user_id")
+  clientFirstName        String            @map("client_first_name")
+  clientLastName         String            @map("client_last_name")
+  clientEmail            String            @map("client_email")
+  clientPhone            String            @map("client_phone")
+  appointmentDate        DateTime          @map("appointment_date") @db.Date
+  startTime              DateTime          @map("start_time") @db.Time
+  endTime                DateTime          @map("end_time") @db.Time
+  status                 AppointmentStatus @default(PENDING)
+  isEmailConfirmed       Boolean           @default(false) @map("is_email_confirmed")
+  emailConfirmationToken String?           @map("email_confirmation_token")
+  notes                  String?           @db.Text
+  clientNotes            String?           @map("client_notes") @db.Text
+  cancellationReason     String?           @map("cancellation_reason") @db.Text
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  service       Service        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  clientUser    User?          @relation("ClientAppointments", fields: [clientUserId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+
+  @@index([businessId])
+  @@index([serviceId])
+  @@index([clientUserId])
+  @@index([appointmentDate])
+  @@index([status])
+  @@map("appointments")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// Availability model - Standard working hours
+model Availability {
+  id               String   @id @default(uuid())
+  businessId       String   @map("business_id")
+  dayOfWeek        Int      @map("day_of_week") // 0=Sunday, 6=Saturday
+  startTime        DateTime @map("start_time") @db.Time
+  endTime          DateTime @map("end_time") @db.Time
+  isAvailable      Boolean  @default(true) @map("is_available")
+  capacityOverride Int?     @map("capacity_override")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  breaks   Break[]
+
+  @@index([businessId])
+  @@index([businessId, dayOfWeek])
+  @@map("availability")
+}
+
+// Break model - Break periods within working hours
+model Break {
+  id             String   @id @default(uuid())
+  availabilityId String   @map("availability_id")
+  breakStart     DateTime @map("break_start") @db.Time
+  breakEnd       DateTime @map("break_end") @db.Time
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  availability Availability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+
+  @@index([availabilityId])
+  @@map("breaks")
+}
+
+// SpecialDate model - Exceptions to standard working hours
+model SpecialDate {
+  id               String    @id @default(uuid())
+  businessId       String    @map("business_id")
+  date             DateTime  @db.Date
+  isAvailable      Boolean   @default(false) @map("is_available")
+  startTime        DateTime? @map("start_time") @db.Time
+  endTime          DateTime? @map("end_time") @db.Time
+  capacityOverride Int?      @map("capacity_override")
+  reason           String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, date])
+  @@map("special_dates")
+}
+
+// Notification model - Email notifications
+model Notification {
+  id               String             @id @default(uuid())
+  appointmentId    String?            @map("appointment_id")
+  recipientEmail   String             @map("recipient_email")
+  notificationType NotificationType   @map("notification_type")
+  status           NotificationStatus @default(PENDING)
+  scheduledFor     DateTime?          @map("scheduled_for")
+  sentAt           DateTime?          @map("sent_at")
+  errorMessage     String?            @map("error_message") @db.Text
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  // Relations
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  REMINDER
+  CANCELLATION
+  RESCHEDULE
+  BUSINESS_ALERT
+  EMAIL_VERIFICATION
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// Analytics model - Cached analytics data
+model Analytics {
+  id                    String   @id @default(uuid())
+  businessId            String   @map("business_id")
+  date                  DateTime @db.Date
+  totalAppointments     Int      @default(0) @map("total_appointments")
+  confirmedAppointments Int      @default(0) @map("confirmed_appointments")
+  cancelledAppointments Int      @default(0) @map("cancelled_appointments")
+  noShows               Int      @default(0) @map("no_shows")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, date])
+  @@index([businessId])
+  @@index([date])
+  @@map("analytics")
+}

@@ -1,0 +1,37 @@
+{
+  "name": "appointments-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Appointments Management System",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "appointments",
+    "booking",
+    "api"
+  ],
+  "author": "achkovski",
+  "license": "ISC",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^7.0.11",
+    "qrcode": "^1.5.4",
+    "slugify": "^1.6.6",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.8",
+    "nodemon": "^3.1.11"
+  }
+}
