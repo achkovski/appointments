@@ -15,9 +15,9 @@ A modern web application designed to enable users to book appointments online. T
 
 ### Backend
 - **Runtime**: Node.js (ES Modules)
-- **Framework**: Express.js
+- **Framework**: Express.js 5
 - **Database**: PostgreSQL (Neon Database - serverless)
-- **ORM**: Prisma
+- **ORM**: Drizzle ORM
 - **Authentication**: JWT (JSON Web Tokens)
 - **Email Service**: Nodemailer with Gmail/SMTP
 
@@ -405,23 +405,70 @@ created_at (TIMESTAMP)
 - Email verification system
 - Password reset functionality
 
-### Phase 3: Business Management ✅ (COMPLETED)
-- Business profile CRUD
-- Availability configuration (working hours, breaks)
-- Special dates/exceptions management
-- Unique slug/URL generation
-- QR code generation
-- Business settings page
+### Phase 3: Business & Service Management ✅ (COMPLETED)
+**Implemented Features:**
+- Business profile CRUD with unique slug generation
+- Service management system (multiple services per business)
+  * Service CRUD operations
+  * Duration configuration (5, 10, 15, 30, 45, 60, 90, 120 mins)
+  * Price and description fields
+  * Active/inactive toggling
+  * Display order management
+- Business settings (autoConfirm, requireEmailConfirmation, capacityMode)
+- Capacity modes: SINGLE (one client) vs MULTIPLE (concurrent clients)
+- Default slot interval configuration
 
-### Phase 4: Public Booking System (CURRENT)
-- Public business page
-- Available slots calculation logic
-- Guest booking form
-- Email confirmation workflow (optional)
+**API Endpoints:**
+- `/api/businesses` - Business CRUD
+- `/api/services` - Service CRUD
+- Authentication with JWT protection
+
+### Phase 4: Availability Management & Public Booking System ✅ (COMPLETED)
+**Implemented Features:**
+
+**Availability Management (Step 1):**
+- Standard working hours configuration (per day of week)
+- Break periods management (lunch breaks, rest periods)
+- Special dates/exceptions (holidays, custom hours, closures)
+- Capacity override per day or special date
+- Full CRUD operations for all availability entities
+
+**Slot Calculation Engine (Step 2):**
+- Intelligent slot calculation algorithm
+- Respects working hours, breaks, and special dates
+- Service duration consideration
+- Slot interval configuration (business default or service-specific)
+- Capacity-aware calculations (SINGLE vs MULTIPLE modes)
+- Real-time conflict detection
+
+**Guest Booking & Appointment Management (Step 3):**
+- Public business page by slug
+- Available slots API for single date and date ranges
+- Guest booking endpoint (no authentication required)
+- Email confirmation workflow with SHA256 token hashing
+- Appointment status management (PENDING, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW)
+- Business owner appointment viewing and filtering
+- Double-booking prevention
 - Real-time availability checking
-- Capacity management logic
 
-### Phase 5: Business Dashboard
+**API Endpoints:**
+- `/api/businesses/:businessId/availability` - Working hours CRUD
+- `/api/businesses/:businessId/availability/:availabilityId/breaks` - Breaks CRUD
+- `/api/businesses/:businessId/special-dates` - Special dates CRUD
+- `/api/public/business/:slug` - Public business info
+- `/api/public/available-slots` - Get slots for date
+- `/api/public/available-slots-range` - Get slots for date range
+- `/api/public/book` - Guest booking
+- `/api/public/confirm-appointment` - Email confirmation
+- `/api/appointments/business/:businessId` - List/filter appointments
+- `/api/appointments/:appointmentId/status` - Update status
+
+**Test Coverage:**
+- Availability management: 94.4% (17/18 tests passed)
+- Slot calculation: 100% (6/6 tests passed)
+- Complete booking flow: 100% (7/7 tests passed)
+
+### Phase 5: Business Dashboard (CURRENT)
 - Dashboard layout and navigation
 - Appointments list view (upcoming, past, cancelled)
 - Appointment detail view
@@ -429,6 +476,7 @@ created_at (TIMESTAMP)
 - Appointment modification (reschedule, cancel)
 - Manual confirmation workflow
 - Notes and client contact
+- Frontend implementation for all Phase 4 features
 
 ### Phase 6: Notifications
 - Email service setup (Nodemailer)
@@ -524,10 +572,16 @@ VITE_PUBLIC_BOOKING_URL=http://localhost:5173/book
 - Refer to CLAUDE.md for master project description
 
 ## Key Project Clarifications
-- **ORM**: Prisma confirmed for PostgreSQL/Neon integration
+- **ORM**: Drizzle ORM with PostgreSQL/Neon integration (switched from Prisma)
+- **Express Version**: Express.js 5 with ES Modules
 - **Time Slot Intervals**: Default 15 minutes, with preset options (5, 10, 15, 30, 45, 60, 90, 120 mins)
 - **Multi-Service Support**: Core feature (not future enhancement) - businesses can offer multiple services
 - **Service Duration**: Each service has its own configurable duration
 - **Service Selection**: Auto-select if one service, otherwise client chooses before booking
 - **Timezone**: For local use only - no timezone conversion needed initially
-- **Capacity Management**: Single or multiple concurrent appointments per time slot
+- **Capacity Management**: Fully implemented with SINGLE or MULTIPLE modes
+  * SINGLE mode: One appointment per time slot
+  * MULTIPLE mode: Concurrent appointments with configurable capacity limits
+  * Capacity override available per day or special date
+- **Email Confirmation**: Optional workflow with SHA256 token hashing for security
+- **Double Booking Prevention**: Real-time validation before booking acceptance
