@@ -4,6 +4,10 @@ import {
   getAvailableSlots,
   getAvailableSlotsRange
 } from '../controllers/publicBookingController.js';
+import {
+  createGuestAppointment,
+  confirmAppointmentEmail
+} from '../controllers/appointmentController.js';
 
 const router = express.Router();
 
@@ -34,5 +38,19 @@ router.post('/available-slots', getAvailableSlots);
  * @body    { businessSlug, serviceId, startDate, endDate }
  */
 router.post('/available-slots-range', getAvailableSlotsRange);
+
+/**
+ * @route   POST /api/public/book
+ * @desc    Create a new appointment (guest booking)
+ * @access  Public
+ */
+router.post('/book', createGuestAppointment);
+
+/**
+ * @route   POST /api/public/confirm-appointment
+ * @desc    Confirm appointment via email token
+ * @access  Public
+ */
+router.post('/confirm-appointment', confirmAppointmentEmail);
 
 export default router;
