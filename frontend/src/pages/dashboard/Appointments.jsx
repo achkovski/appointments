@@ -31,6 +31,7 @@ import {
   XCircle,
   AlertCircle,
 } from 'lucide-react';
+import CreateAppointmentDialog from '../../components/appointments/CreateAppointmentDialog';
 
 // Mock data for testing
 const mockAppointments = [
@@ -113,7 +114,11 @@ const Appointments = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const itemsPerPage = 10;
+
+  // TODO: Replace with actual businessId from context/auth
+  const businessId = '1';
 
   // Filter appointments based on status
   useEffect(() => {
@@ -234,7 +239,7 @@ const Appointments = () => {
             Manage all your appointments in one place
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setShowCreateDialog(true)}>
           <Plus className="mr-2 h-4 w-4" />
           New Appointment
         </Button>
@@ -287,7 +292,7 @@ const Appointments = () => {
                   ? 'Try adjusting your search or filters'
                   : 'Create your first appointment to get started'}
               </p>
-              <Button>
+              <Button onClick={() => setShowCreateDialog(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Appointment
               </Button>
@@ -426,6 +431,17 @@ const Appointments = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Create Appointment Dialog */}
+      <CreateAppointmentDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        businessId={businessId}
+        onSuccess={() => {
+          // TODO: Refresh appointments list
+          console.log('Appointment created successfully');
+        }}
+      />
     </div>
   );
 };

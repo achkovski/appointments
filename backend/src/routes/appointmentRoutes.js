@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  createManualAppointment,
   getBusinessAppointments,
   getAppointmentById,
   updateAppointmentStatus,
@@ -14,6 +15,13 @@ const router = express.Router();
  * APPOINTMENT MANAGEMENT ROUTES
  * Protected routes for business owners to manage appointments
  */
+
+/**
+ * @route   POST /api/appointments
+ * @desc    Create appointment manually (business owner)
+ * @access  Private (Business Owner)
+ */
+router.post('/appointments', protect, createManualAppointment);
 
 /**
  * @route   GET /api/appointments/business/:businessId
