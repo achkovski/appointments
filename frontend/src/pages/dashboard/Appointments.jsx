@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -25,7 +26,7 @@ import {
   User,
   Mail,
   Phone,
-  MoreVertical,
+  Eye,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -106,6 +107,7 @@ const mockAppointments = [
 ];
 
 const Appointments = () => {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState(mockAppointments);
   const [filteredAppointments, setFilteredAppointments] = useState(mockAppointments);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -305,7 +307,11 @@ const Appointments = () => {
                 </TableHeader>
                 <TableBody>
                   {currentAppointments.map((appointment) => (
-                    <TableRow key={appointment.id}>
+                    <TableRow
+                      key={appointment.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/dashboard/appointments/${appointment.id}`)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -359,8 +365,16 @@ const Appointments = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/appointments/${appointment.id}`);
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View
                         </Button>
                       </TableCell>
                     </TableRow>

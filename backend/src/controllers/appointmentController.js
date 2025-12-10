@@ -337,6 +337,65 @@ export const getBusinessAppointments = async (req, res) => {
 };
 
 /**
+ * Get single appointment details (business owner only)
+ * GET /api/appointments/:appointmentId
+ */
+export const getAppointmentById = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const userId = req.user.id;
+
+    // Get appointment with service info
+    const appointment = await db.select({
+      appointment: appointments,
+      service: services,
+      business: businesses
+    })
+      .from(appointments)
+      .leftJoin(services, eq(appointments.serviceId, services.id))
+      .leftJoin(businesses, eq(appointments.businessId, businesses.id))
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+
+    if (!appointment.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    const { appointment: apt, service, business } = appointment[0];
+
+    // Verify business ownership
+    if (business.ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this business.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...apt,
+        serviceName: service?.name,
+        serviceDuration: service?.duration,
+        servicePrice: service?.price,
+        businessName: business?.businessName
+      }
+    });
+
+  } catch (error) {
+    console.error('Get appointment by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * Update appointment status (business owner only)
  * PUT /api/appointments/:appointmentId/status
  * Body: { status, cancellationReason }
@@ -409,9 +468,194 @@ export const updateAppointmentStatus = async (req, res) => {
   }
 };
 
+/**
+ * Update appointment notes (business owner only)
+ * PUT /api/appointments/:appointmentId/notes
+ * Body: { notes }
+ */
+export const updateAppointmentNotes = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { notes } = req.body;
+    const userId = req.user.id;
+
+    // Get appointment
+    const appointment = await db.select().from(appointments)
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+
+    if (!appointment.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Verify business ownership
+    const business = await db.select().from(businesses)
+      .where(eq(businesses.id, appointment[0].businessId))
+      .limit(1);
+
+    if (!business.length || business[0].ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this business.'
+      });
+    }
+
+    // Update notes
+    await db.update(appointments)
+      .set({
+        notes: notes || null,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(appointments.id, appointmentId));
+
+    res.json({
+      success: true,
+      message: 'Appointment notes updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Update appointment notes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update appointment notes',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Reschedule appointment (business owner only)
+ * PUT /api/appointments/:appointmentId/reschedule
+ * Body: { appointmentDate, startTime, serviceId }
+ */
+export const rescheduleAppointment = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { appointmentDate, startTime, serviceId } = req.body;
+    const userId = req.user.id;
+
+    if (!appointmentDate || !startTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'appointmentDate and startTime are required'
+      });
+    }
+
+    // Get appointment
+    const appointment = await db.select().from(appointments)
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+
+    if (!appointment.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    const apt = appointment[0];
+
+    // Verify business ownership
+    const business = await db.select().from(businesses)
+      .where(eq(businesses.id, apt.businessId))
+      .limit(1);
+
+    if (!business.length || business[0].ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this business.'
+      });
+    }
+
+    // Get service (use existing or new serviceId)
+    const targetServiceId = serviceId || apt.serviceId;
+    const service = await db.select().from(services)
+      .where(eq(services.id, targetServiceId))
+      .limit(1);
+
+    if (!service.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    const serviceData = service[0];
+
+    // Calculate available slots for the new date
+    const slotsData = await calculateAvailableSlots(
+      apt.businessId,
+      targetServiceId,
+      appointmentDate,
+      appointmentId // Exclude current appointment from availability check
+    );
+
+    if (!slotsData.available) {
+      return res.status(400).json({
+        success: false,
+        message: `No slots available on ${appointmentDate}`,
+        reason: slotsData.reason
+      });
+    }
+
+    // Verify the requested time slot is available
+    const requestedSlot = slotsData.slots.find(slot => slot.startTime === startTime);
+
+    if (!requestedSlot) {
+      return res.status(400).json({
+        success: false,
+        message: `Time slot ${startTime} is not available`,
+        availableSlots: slotsData.slots
+      });
+    }
+
+    // Calculate new end time
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const endMinutes = hours * 60 + minutes + serviceData.duration;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+
+    // Update appointment
+    await db.update(appointments)
+      .set({
+        appointmentDate,
+        startTime,
+        endTime,
+        serviceId: targetServiceId,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(appointments.id, appointmentId));
+
+    res.json({
+      success: true,
+      message: 'Appointment rescheduled successfully',
+      data: {
+        appointmentDate,
+        startTime,
+        endTime
+      }
+    });
+
+  } catch (error) {
+    console.error('Reschedule appointment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reschedule appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   createGuestAppointment,
   confirmAppointmentEmail,
   getBusinessAppointments,
-  updateAppointmentStatus
+  getAppointmentById,
+  updateAppointmentStatus,
+  updateAppointmentNotes,
+  rescheduleAppointment
 };

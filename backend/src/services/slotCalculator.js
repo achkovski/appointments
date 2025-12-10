@@ -160,9 +160,10 @@ export async function getBreaksForAvailability(availabilityId) {
  * @param {string} businessId - Business ID
  * @param {string} serviceId - Service ID
  * @param {string} dateStr - Date in YYYY-MM-DD format
+ * @param {string} excludeAppointmentId - Optional appointment ID to exclude (for rescheduling)
  * @returns {Promise<Array>} Array of appointments with start and end times
  */
-export async function getExistingAppointments(businessId, serviceId, dateStr) {
+export async function getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId = null) {
   const existingAppointments = await db.select().from(appointments)
     .where(and(
       eq(appointments.businessId, businessId),
@@ -172,9 +173,9 @@ export async function getExistingAppointments(businessId, serviceId, dateStr) {
       // (not cancelled or no-show)
     ));
 
-  // Filter out cancelled and no-show appointments
+  // Filter out cancelled, no-show appointments, and excluded appointment
   const activeAppointments = existingAppointments.filter(
-    apt => apt.status !== 'CANCELLED' && apt.status !== 'NO_SHOW'
+    apt => apt.status !== 'CANCELLED' && apt.status !== 'NO_SHOW' && apt.id !== excludeAppointmentId
   );
 
   return activeAppointments.map(apt => ({
@@ -190,9 +191,10 @@ export async function getExistingAppointments(businessId, serviceId, dateStr) {
  * @param {string} businessId - Business ID
  * @param {string} serviceId - Service ID
  * @param {string} dateStr - Date in YYYY-MM-DD format
+ * @param {string} excludeAppointmentId - Optional appointment ID to exclude (for rescheduling)
  * @returns {Promise<Object>} Object with available slots and metadata
  */
-export async function calculateAvailableSlots(businessId, serviceId, dateStr) {
+export async function calculateAvailableSlots(businessId, serviceId, dateStr, excludeAppointmentId = null) {
   try {
     // Validate inputs
     if (!businessId || !serviceId || !dateStr) {
@@ -272,7 +274,7 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr) {
       : await getBreaksForAvailability(workingHours.availabilityId);
 
     // Get existing appointments
-    const existingAppointments = await getExistingAppointments(businessId, serviceId, dateStr);
+    const existingAppointments = await getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId);
 
     // Determine capacity
     const capacity = workingHours.capacityOverride

@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import DashboardLayout from './components/layout/DashboardLayout';
 import Overview from './pages/dashboard/Overview';
 import Appointments from './pages/dashboard/Appointments';
+import AppointmentDetail from './pages/dashboard/AppointmentDetail';
 import Services from './pages/dashboard/Services';
 import Availability from './pages/dashboard/Availability';
 import Analytics from './pages/dashboard/Analytics';
@@ -19,6 +20,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Overview />} />
           <Route path="appointments" element={<Appointments />} />
+          <Route path="appointments/:id" element={<AppointmentDetail />} />
           <Route path="services" element={<Services />} />
           <Route path="availability" element={<Availability />} />
           <Route path="analytics" element={<Analytics />} />
