@@ -1,35 +1,36 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import DashboardLayout from './components/layout/DashboardLayout';
+import Overview from './pages/dashboard/Overview';
+import Appointments from './pages/dashboard/Appointments';
+import Services from './pages/dashboard/Services';
+import Availability from './pages/dashboard/Availability';
+import Analytics from './pages/dashboard/Analytics';
+import BusinessProfile from './pages/dashboard/BusinessProfile';
+import Settings from './pages/dashboard/Settings';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Router>
+      <Routes>
+        {/* Redirect root to dashboard */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Dashboard routes */}
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Overview />} />
+          <Route path="appointments" element={<Appointments />} />
+          <Route path="services" element={<Services />} />
+          <Route path="availability" element={<Availability />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="business" element={<BusinessProfile />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+
+        {/* Catch all - redirect to dashboard */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
