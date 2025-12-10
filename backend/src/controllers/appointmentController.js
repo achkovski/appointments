@@ -337,6 +337,193 @@ export const getBusinessAppointments = async (req, res) => {
 };
 
 /**
+ * Create appointment manually (business owner only)
+ * POST /api/appointments
+ * Body: {
+ *   businessId, serviceId, appointmentDate, startTime,
+ *   clientFirstName, clientLastName, clientEmail, clientPhone, notes, clientNotes
+ * }
+ */
+export const createManualAppointment = async (req, res) => {
+  try {
+    const {
+      businessId,
+      serviceId,
+      appointmentDate,
+      startTime,
+      clientFirstName,
+      clientLastName,
+      clientEmail,
+      clientPhone,
+      notes,
+      clientNotes
+    } = req.body;
+    const userId = req.user.id;
+
+    // Validate required fields
+    if (!businessId || !serviceId || !appointmentDate || !startTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'businessId, serviceId, appointmentDate, and startTime are required'
+      });
+    }
+
+    if (!clientFirstName || !clientLastName || !clientEmail || !clientPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Client information (firstName, lastName, email, phone) is required'
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(clientEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+
+    // Verify business ownership
+    const business = await db.select().from(businesses)
+      .where(eq(businesses.id, businessId))
+      .limit(1);
+
+    if (!business.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found'
+      });
+    }
+
+    if (business[0].ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this business.'
+      });
+    }
+
+    const businessData = business[0];
+
+    // Get service and verify it belongs to this business
+    const service = await db.select().from(services)
+      .where(and(
+        eq(services.id, serviceId),
+        eq(services.businessId, businessId),
+        eq(services.isActive, true)
+      ))
+      .limit(1);
+
+    if (!service.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found or inactive'
+      });
+    }
+
+    const serviceData = service[0];
+
+    // Calculate available slots for the requested date
+    const slotsData = await calculateAvailableSlots(businessId, serviceId, appointmentDate);
+
+    if (!slotsData.available) {
+      return res.status(400).json({
+        success: false,
+        message: `No slots available on ${appointmentDate}`,
+        reason: slotsData.reason
+      });
+    }
+
+    // Verify the requested time slot is available
+    const requestedSlot = slotsData.slots.find(slot => slot.startTime === startTime);
+
+    if (!requestedSlot) {
+      return res.status(400).json({
+        success: false,
+        message: `Time slot ${startTime} is not available`,
+        availableSlots: slotsData.slots
+      });
+    }
+
+    // Calculate end time
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const endMinutes = hours * 60 + minutes + serviceData.duration;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+
+    // Create appointment (manually created appointments are auto-confirmed)
+    const newAppointment = {
+      id: randomUUID(),
+      businessId: businessData.id,
+      serviceId: serviceData.id,
+      clientUserId: null, // Manual booking
+      clientFirstName,
+      clientLastName,
+      clientEmail: clientEmail.toLowerCase().trim(),
+      clientPhone,
+      appointmentDate,
+      startTime,
+      endTime,
+      status: 'CONFIRMED', // Manual appointments are auto-confirmed
+      isEmailConfirmed: true, // Skip email confirmation for manual bookings
+      emailConfirmationToken: null,
+      notes: notes || null,
+      clientNotes: clientNotes || null,
+      cancellationReason: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await db.insert(appointments).values(newAppointment);
+
+    // Send confirmation email to client
+    try {
+      await sendAppointmentConfirmationEmail({
+        to: clientEmail,
+        clientName: `${clientFirstName} ${clientLastName}`,
+        businessName: businessData.businessName,
+        serviceName: serviceData.name,
+        appointmentDate,
+        startTime,
+        endTime,
+        requiresConfirmation: false,
+        confirmationToken: null
+      });
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Don't fail the booking if email fails
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Appointment created successfully',
+      appointment: {
+        id: newAppointment.id,
+        businessName: businessData.businessName,
+        serviceName: serviceData.name,
+        appointmentDate,
+        startTime,
+        endTime,
+        status: newAppointment.status,
+        clientFirstName,
+        clientLastName,
+        clientEmail,
+        clientPhone
+      }
+    });
+
+  } catch (error) {
+    console.error('Create manual appointment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * Get single appointment details (business owner only)
  * GET /api/appointments/:appointmentId
  */
@@ -653,6 +840,7 @@ export const rescheduleAppointment = async (req, res) => {
 export default {
   createGuestAppointment,
   confirmAppointmentEmail,
+  createManualAppointment,
   getBusinessAppointments,
   getAppointmentById,
   updateAppointmentStatus,
