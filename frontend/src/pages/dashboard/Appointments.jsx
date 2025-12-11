@@ -32,93 +32,45 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import CreateAppointmentDialog from '../../components/appointments/CreateAppointmentDialog';
-
-// Mock data for testing
-const mockAppointments = [
-  {
-    id: '1',
-    clientFirstName: 'John',
-    clientLastName: 'Doe',
-    clientEmail: 'john.doe@example.com',
-    clientPhone: '+1 555-0101',
-    appointmentDate: '2025-12-15',
-    startTime: '10:00',
-    endTime: '11:00',
-    status: 'confirmed',
-    serviceName: 'Haircut',
-    notes: 'First time client',
-    createdAt: '2025-12-10T10:00:00Z',
-  },
-  {
-    id: '2',
-    clientFirstName: 'Jane',
-    clientLastName: 'Smith',
-    clientEmail: 'jane.smith@example.com',
-    clientPhone: '+1 555-0102',
-    appointmentDate: '2025-12-16',
-    startTime: '14:00',
-    endTime: '15:30',
-    status: 'pending',
-    serviceName: 'Massage Therapy',
-    notes: 'Prefers afternoon appointments',
-    createdAt: '2025-12-11T09:30:00Z',
-  },
-  {
-    id: '3',
-    clientFirstName: 'Bob',
-    clientLastName: 'Johnson',
-    clientEmail: 'bob.j@example.com',
-    clientPhone: '+1 555-0103',
-    appointmentDate: '2025-12-18',
-    startTime: '09:00',
-    endTime: '10:00',
-    status: 'confirmed',
-    serviceName: 'Consultation',
-    notes: 'Bring previous medical records',
-    createdAt: '2025-12-11T14:20:00Z',
-  },
-  {
-    id: '4',
-    clientFirstName: 'Alice',
-    clientLastName: 'Williams',
-    clientEmail: 'alice.w@example.com',
-    clientPhone: '+1 555-0104',
-    appointmentDate: '2025-12-05',
-    startTime: '11:00',
-    endTime: '12:00',
-    status: 'completed',
-    serviceName: 'Dental Cleaning',
-    notes: 'Regular checkup',
-    createdAt: '2025-12-01T08:15:00Z',
-  },
-  {
-    id: '5',
-    clientFirstName: 'Charlie',
-    clientLastName: 'Brown',
-    clientEmail: 'charlie.b@example.com',
-    clientPhone: '+1 555-0105',
-    appointmentDate: '2025-12-08',
-    startTime: '15:00',
-    endTime: '16:00',
-    status: 'cancelled',
-    serviceName: 'Personal Training',
-    notes: 'Client cancelled due to schedule conflict',
-    createdAt: '2025-12-03T16:45:00Z',
-  },
-];
+import { useBusiness } from '../../context/BusinessContext';
+import { getAppointments } from '../../services/appointmentsService';
 
 const Appointments = () => {
   const navigate = useNavigate();
-  const [appointments, setAppointments] = useState(mockAppointments);
-  const [filteredAppointments, setFilteredAppointments] = useState(mockAppointments);
+  const { business, loading: businessLoading } = useBusiness();
+  const [appointments, setAppointments] = useState([]);
+  const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const itemsPerPage = 10;
 
-  // TODO: Replace with actual businessId from context/auth
-  const businessId = '1';
+  // Fetch appointments when business is loaded
+  useEffect(() => {
+    if (business?.id) {
+      fetchAppointments();
+    }
+  }, [business]);
+
+  const fetchAppointments = async () => {
+    if (!business?.id) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getAppointments(business.id, {});
+      const appointmentsData = response.appointments || [];
+      setAppointments(appointmentsData);
+    } catch (err) {
+      console.error('Error fetching appointments:', err);
+      setError(err.response?.data?.message || 'Failed to load appointments');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter appointments based on status
   useEffect(() => {
@@ -131,15 +83,16 @@ const Appointments = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        const statusUpper = apt.status?.toUpperCase();
         switch (activeFilter) {
           case 'upcoming':
-            return aptDate >= today && apt.status !== 'cancelled' && apt.status !== 'completed';
+            return aptDate >= today && statusUpper !== 'CANCELLED' && statusUpper !== 'COMPLETED';
           case 'past':
-            return aptDate < today || apt.status === 'completed';
+            return aptDate < today || statusUpper === 'COMPLETED';
           case 'cancelled':
-            return apt.status === 'cancelled';
+            return statusUpper === 'CANCELLED';
           case 'pending':
-            return apt.status === 'pending';
+            return statusUpper === 'PENDING';
           default:
             return true;
         }
@@ -167,15 +120,16 @@ const Appointments = () => {
   const currentAppointments = filteredAppointments.slice(startIndex, endIndex);
 
   const getStatusBadge = (status) => {
+    const statusUpper = status?.toUpperCase();
     const variants = {
-      confirmed: { variant: 'success', label: 'Confirmed', icon: CheckCircle },
-      pending: { variant: 'warning', label: 'Pending', icon: AlertCircle },
-      cancelled: { variant: 'destructive', label: 'Cancelled', icon: XCircle },
-      completed: { variant: 'secondary', label: 'Completed', icon: CheckCircle },
-      no_show: { variant: 'outline', label: 'No Show', icon: XCircle },
+      CONFIRMED: { variant: 'success', label: 'Confirmed', icon: CheckCircle },
+      PENDING: { variant: 'warning', label: 'Pending', icon: AlertCircle },
+      CANCELLED: { variant: 'destructive', label: 'Cancelled', icon: XCircle },
+      COMPLETED: { variant: 'secondary', label: 'Completed', icon: CheckCircle },
+      NO_SHOW: { variant: 'outline', label: 'No Show', icon: XCircle },
     };
 
-    const config = variants[status] || variants.pending;
+    const config = variants[statusUpper] || variants.PENDING;
     const Icon = config.icon;
 
     return (
@@ -212,10 +166,11 @@ const Appointments = () => {
         const aptDate = new Date(apt.appointmentDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return aptDate >= today && apt.status !== 'cancelled' && apt.status !== 'completed';
+        const statusUpper = apt.status?.toUpperCase();
+        return aptDate >= today && statusUpper !== 'CANCELLED' && statusUpper !== 'COMPLETED';
       }).length
     },
-    { key: 'pending', label: 'Pending', count: appointments.filter(apt => apt.status === 'pending').length },
+    { key: 'pending', label: 'Pending', count: appointments.filter(apt => apt.status?.toUpperCase() === 'PENDING').length },
     {
       key: 'past',
       label: 'Past',
@@ -223,11 +178,36 @@ const Appointments = () => {
         const aptDate = new Date(apt.appointmentDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return aptDate < today || apt.status === 'completed';
+        const statusUpper = apt.status?.toUpperCase();
+        return aptDate < today || statusUpper === 'COMPLETED';
       }).length
     },
-    { key: 'cancelled', label: 'Cancelled', count: appointments.filter(apt => apt.status === 'cancelled').length },
+    { key: 'cancelled', label: 'Cancelled', count: appointments.filter(apt => apt.status?.toUpperCase() === 'CANCELLED').length },
   ];
+
+  if (businessLoading || loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading appointments...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <XCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Error Loading Appointments</h3>
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
+          <Button onClick={fetchAppointments}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -334,7 +314,7 @@ const Appointments = () => {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{appointment.serviceName}</p>
+                          <p className="font-medium">{appointment.service?.name || appointment.serviceName || 'N/A'}</p>
                           {appointment.notes && (
                             <p className="text-sm text-muted-foreground line-clamp-1">
                               {appointment.notes}
@@ -436,10 +416,10 @@ const Appointments = () => {
       <CreateAppointmentDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        businessId={businessId}
+        businessId={business?.id}
         onSuccess={() => {
-          // TODO: Refresh appointments list
-          console.log('Appointment created successfully');
+          fetchAppointments();
+          setShowCreateDialog(false);
         }}
       />
     </div>
