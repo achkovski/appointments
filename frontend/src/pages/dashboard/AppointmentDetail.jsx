@@ -36,6 +36,13 @@ import {
 } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import {
+  getAppointment,
+  updateAppointment,
+  updateAppointmentStatus,
+  confirmAppointment as confirmAppointmentService,
+  cancelAppointment as cancelAppointmentService,
+} from '../../services/appointmentsService';
 
 const AppointmentDetail = () => {
   const { id } = useParams();
@@ -44,6 +51,7 @@ const AppointmentDetail = () => {
   // State
   const [appointment, setAppointment] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [notes, setNotes] = useState('');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -52,47 +60,40 @@ const AppointmentDetail = () => {
   const [cancellationReason, setCancellationReason] = useState('');
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Mock data for testing - will be replaced with API call
+  // Fetch appointment data from API
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const mockAppointment = {
-        id: id,
-        clientFirstName: 'John',
-        clientLastName: 'Doe',
-        clientEmail: 'john.doe@example.com',
-        clientPhone: '+1 555-0101',
-        appointmentDate: '2025-12-15',
-        startTime: '10:00',
-        endTime: '11:00',
-        status: 'confirmed',
-        serviceName: 'Haircut',
-        serviceDuration: 60,
-        servicePrice: 50,
-        notes: 'First time client, prefers short cut',
-        clientNotes: 'Please be gentle, first time getting a professional haircut',
-        createdAt: '2025-12-10T10:00:00Z',
-        updatedAt: '2025-12-10T10:00:00Z',
-        isEmailConfirmed: true,
-        businessName: 'My Business',
-      };
-      setAppointment(mockAppointment);
-      setNotes(mockAppointment.notes || '');
-      setLoading(false);
-    }, 500);
+    fetchAppointment();
   }, [id]);
 
+  const fetchAppointment = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getAppointment(id);
+      const aptData = response.appointment || response;
+      setAppointment(aptData);
+      setNotes(aptData.notes || '');
+    } catch (err) {
+      console.error('Error fetching appointment:', err);
+      setError(err.response?.data?.message || 'Failed to load appointment details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
+    const statusUpper = status?.toUpperCase();
     const variants = {
-      confirmed: { variant: 'success', label: 'Confirmed', icon: CheckCircle, color: 'text-green-600' },
-      pending: { variant: 'warning', label: 'Pending', icon: AlertCircle, color: 'text-yellow-600' },
-      cancelled: { variant: 'destructive', label: 'Cancelled', icon: XCircle, color: 'text-red-600' },
-      completed: { variant: 'secondary', label: 'Completed', icon: CheckCircle, color: 'text-gray-600' },
-      no_show: { variant: 'outline', label: 'No Show', icon: XCircle, color: 'text-gray-500' },
+      CONFIRMED: { variant: 'success', label: 'Confirmed', icon: CheckCircle, color: 'text-green-600' },
+      PENDING: { variant: 'warning', label: 'Pending', icon: AlertCircle, color: 'text-yellow-600' },
+      CANCELLED: { variant: 'destructive', label: 'Cancelled', icon: XCircle, color: 'text-red-600' },
+      COMPLETED: { variant: 'secondary', label: 'Completed', icon: CheckCircle, color: 'text-gray-600' },
+      NO_SHOW: { variant: 'outline', label: 'No Show', icon: XCircle, color: 'text-gray-500' },
     };
 
-    const config = variants[status.toLowerCase()] || variants.pending;
+    const config = variants[statusUpper] || variants.PENDING;
     const Icon = config.icon;
 
     return (
@@ -121,39 +122,92 @@ const AppointmentDetail = () => {
     });
   };
 
-  const handleSaveNotes = () => {
-    // TODO: API call to save notes
-    console.log('Saving notes:', notes);
-    setAppointment({ ...appointment, notes });
-    setIsEditingNotes(false);
+  const handleSaveNotes = async () => {
+    try {
+      setActionLoading(true);
+      await updateAppointment(id, { notes });
+      setAppointment({ ...appointment, notes });
+      setIsEditingNotes(false);
+    } catch (err) {
+      console.error('Error saving notes:', err);
+      alert(err.response?.data?.message || 'Failed to save notes');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleConfirm = () => {
-    // TODO: API call to confirm appointment
-    console.log('Confirming appointment');
-    setAppointment({ ...appointment, status: 'confirmed' });
-    setShowConfirmDialog(false);
+  const handleConfirm = async () => {
+    try {
+      setActionLoading(true);
+      await confirmAppointmentService(id);
+      setAppointment({ ...appointment, status: 'CONFIRMED' });
+      setShowConfirmDialog(false);
+    } catch (err) {
+      console.error('Error confirming appointment:', err);
+      alert(err.response?.data?.message || 'Failed to confirm appointment');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleCancel = () => {
-    // TODO: API call to cancel appointment
-    console.log('Cancelling appointment with reason:', cancellationReason);
-    setAppointment({ ...appointment, status: 'cancelled', cancellationReason });
-    setShowCancelDialog(false);
-    setCancellationReason('');
+  const handleCancel = async () => {
+    try {
+      setActionLoading(true);
+      await cancelAppointmentService(id, cancellationReason);
+      setAppointment({ ...appointment, status: 'CANCELLED', cancellationReason });
+      setShowCancelDialog(false);
+      setCancellationReason('');
+    } catch (err) {
+      console.error('Error cancelling appointment:', err);
+      alert(err.response?.data?.message || 'Failed to cancel appointment');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleReschedule = () => {
-    // TODO: API call to reschedule appointment
-    console.log('Rescheduling to:', rescheduleDate, rescheduleTime);
-    setAppointment({
-      ...appointment,
-      appointmentDate: rescheduleDate,
-      startTime: rescheduleTime
-    });
-    setShowRescheduleDialog(false);
-    setRescheduleDate('');
-    setRescheduleTime('');
+  const handleReschedule = async () => {
+    try {
+      setActionLoading(true);
+      // Calculate end time based on service duration
+      const startDate = new Date(`2000-01-01T${rescheduleTime}`);
+      const duration = appointment.service?.duration || appointment.serviceDuration || 60;
+      const endDate = new Date(startDate.getTime() + duration * 60000);
+      const endTime = endDate.toTimeString().slice(0, 5);
+
+      await updateAppointment(id, {
+        appointmentDate: rescheduleDate,
+        startTime: rescheduleTime,
+        endTime: endTime,
+      });
+
+      setAppointment({
+        ...appointment,
+        appointmentDate: rescheduleDate,
+        startTime: rescheduleTime,
+        endTime: endTime,
+      });
+      setShowRescheduleDialog(false);
+      setRescheduleDate('');
+      setRescheduleTime('');
+    } catch (err) {
+      console.error('Error rescheduling appointment:', err);
+      alert(err.response?.data?.message || 'Failed to reschedule appointment');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMarkCompleted = async () => {
+    try {
+      setActionLoading(true);
+      await updateAppointmentStatus(id, 'COMPLETED');
+      setAppointment({ ...appointment, status: 'COMPLETED' });
+    } catch (err) {
+      console.error('Error marking as completed:', err);
+      alert(err.response?.data?.message || 'Failed to mark as completed');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleContactClient = (method) => {
@@ -175,18 +229,27 @@ const AppointmentDetail = () => {
     );
   }
 
-  if (!appointment) {
+  if (error || !appointment) {
     return (
       <div className="flex flex-col items-center justify-center h-96">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Appointment Not Found</h3>
+        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold mb-2">
+          {error ? 'Error Loading Appointment' : 'Appointment Not Found'}
+        </h3>
         <p className="text-muted-foreground mb-4">
-          The appointment you're looking for doesn't exist or has been deleted.
+          {error || "The appointment you're looking for doesn't exist or has been deleted."}
         </p>
-        <Button onClick={() => navigate('/dashboard/appointments')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Appointments
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate('/dashboard/appointments')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Appointments
+          </Button>
+          {error && (
+            <Button variant="outline" onClick={fetchAppointment}>
+              Try Again
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
@@ -295,7 +358,9 @@ const AppointmentDetail = () => {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Service</p>
-              <p className="text-lg font-semibold">{appointment.serviceName}</p>
+              <p className="text-lg font-semibold">
+                {appointment.service?.name || appointment.serviceName || 'N/A'}
+              </p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Date</p>
@@ -315,12 +380,14 @@ const AppointmentDetail = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Duration</p>
-              <p className="font-medium">{appointment.serviceDuration} minutes</p>
+              <p className="font-medium">
+                {appointment.service?.duration || appointment.serviceDuration || 'N/A'} minutes
+              </p>
             </div>
-            {appointment.servicePrice && (
+            {(appointment.service?.price || appointment.servicePrice) && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Price</p>
-                <p className="font-medium">${appointment.servicePrice}</p>
+                <p className="font-medium">${appointment.service?.price || appointment.servicePrice}</p>
               </div>
             )}
             <div>
@@ -366,9 +433,9 @@ const AppointmentDetail = () => {
                 rows={5}
               />
               <div className="flex gap-2">
-                <Button onClick={handleSaveNotes}>
+                <Button onClick={handleSaveNotes} disabled={actionLoading}>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Notes
+                  {actionLoading ? 'Saving...' : 'Save Notes'}
                 </Button>
                 <Button
                   variant="outline"
@@ -376,6 +443,7 @@ const AppointmentDetail = () => {
                     setNotes(appointment.notes || '');
                     setIsEditingNotes(false);
                   }}
+                  disabled={actionLoading}
                 >
                   Cancel
                 </Button>
@@ -403,17 +471,18 @@ const AppointmentDetail = () => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {appointment.status.toLowerCase() === 'pending' && (
-              <Button onClick={() => setShowConfirmDialog(true)}>
+            {appointment.status?.toUpperCase() === 'PENDING' && (
+              <Button onClick={() => setShowConfirmDialog(true)} disabled={actionLoading}>
                 <CheckCircle className="mr-2 h-4 w-4" />
                 Confirm Appointment
               </Button>
             )}
-            {(appointment.status.toLowerCase() === 'pending' || appointment.status.toLowerCase() === 'confirmed') && (
+            {(appointment.status?.toUpperCase() === 'PENDING' || appointment.status?.toUpperCase() === 'CONFIRMED') && (
               <>
                 <Button
                   variant="outline"
                   onClick={() => setShowRescheduleDialog(true)}
+                  disabled={actionLoading}
                 >
                   <CalendarClock className="mr-2 h-4 w-4" />
                   Reschedule
@@ -421,21 +490,21 @@ const AppointmentDetail = () => {
                 <Button
                   variant="destructive"
                   onClick={() => setShowCancelDialog(true)}
+                  disabled={actionLoading}
                 >
                   <Ban className="mr-2 h-4 w-4" />
                   Cancel Appointment
                 </Button>
               </>
             )}
-            {appointment.status.toLowerCase() === 'confirmed' && (
+            {appointment.status?.toUpperCase() === 'CONFIRMED' && (
               <Button
                 variant="outline"
-                onClick={() => {
-                  setAppointment({ ...appointment, status: 'completed' });
-                }}
+                onClick={handleMarkCompleted}
+                disabled={actionLoading}
               >
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Mark as Completed
+                {actionLoading ? 'Updating...' : 'Mark as Completed'}
               </Button>
             )}
           </div>
@@ -452,11 +521,11 @@ const AppointmentDetail = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={actionLoading}>
               Cancel
             </Button>
-            <Button onClick={handleConfirm}>
-              Confirm Appointment
+            <Button onClick={handleConfirm} disabled={actionLoading}>
+              {actionLoading ? 'Confirming...' : 'Confirm Appointment'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -484,11 +553,11 @@ const AppointmentDetail = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)} disabled={actionLoading}>
               Go Back
             </Button>
-            <Button variant="destructive" onClick={handleCancel}>
-              Cancel Appointment
+            <Button variant="destructive" onClick={handleCancel} disabled={actionLoading}>
+              {actionLoading ? 'Cancelling...' : 'Cancel Appointment'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -524,14 +593,14 @@ const AppointmentDetail = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRescheduleDialog(false)}>
+            <Button variant="outline" onClick={() => setShowRescheduleDialog(false)} disabled={actionLoading}>
               Cancel
             </Button>
             <Button
               onClick={handleReschedule}
-              disabled={!rescheduleDate || !rescheduleTime}
+              disabled={!rescheduleDate || !rescheduleTime || actionLoading}
             >
-              Reschedule
+              {actionLoading ? 'Rescheduling...' : 'Reschedule'}
             </Button>
           </DialogFooter>
         </DialogContent>
