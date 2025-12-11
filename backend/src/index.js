@@ -7,6 +7,7 @@ import serviceRoutes from './routes/serviceRoutes.js';
 import availabilityRoutes from './routes/availabilityRoutes.js';
 import publicBookingRoutes from './routes/publicBookingRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
+import { startReminderScheduler } from './services/reminderScheduler.js';
 
 dotenv.config();
 
@@ -62,4 +63,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // Start the appointment reminder scheduler
+  startReminderScheduler();
+  console.log(`📧 Reminder scheduler initialized`);
 });

@@ -1,9 +1,14 @@
 import db from '../config/database.js';
-import { appointments, businesses, services } from '../config/schema.js';
+import { appointments, businesses, services, users } from '../config/schema.js';
 import { eq, and, gte, lte, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { calculateAvailableSlots } from '../services/slotCalculator.js';
-import { sendAppointmentConfirmationEmail } from '../services/emailService.js';
+import {
+  sendAppointmentConfirmationEmail,
+  sendCancellationEmail,
+  sendRescheduleEmail,
+  sendBusinessAlertEmail
+} from '../services/emailService.js';
 import crypto from 'crypto';
 
 /**
@@ -154,7 +159,7 @@ export const createGuestAppointment = async (req, res) => {
 
     await db.insert(appointments).values(newAppointment);
 
-    // Send confirmation email
+    // Send confirmation email to client
     try {
       await sendAppointmentConfirmationEmail({
         to: clientEmail,
@@ -168,7 +173,31 @@ export const createGuestAppointment = async (req, res) => {
         confirmationToken: emailConfirmationToken
       });
     } catch (emailError) {
-      console.error('Email sending failed:', emailError);
+      console.error('Client confirmation email failed:', emailError);
+      // Don't fail the booking if email fails
+    }
+
+    // Send alert email to business owner
+    try {
+      // Get business owner email
+      const owner = await db.select().from(users)
+        .where(eq(users.id, businessData.ownerId))
+        .limit(1);
+
+      if (owner.length && owner[0].email) {
+        await sendBusinessAlertEmail({
+          to: owner[0].email,
+          businessName: businessData.businessName,
+          clientName: `${clientFirstName} ${clientLastName}`,
+          clientPhone,
+          serviceName: serviceData.name,
+          appointmentDate,
+          startTime,
+          endTime
+        });
+      }
+    } catch (emailError) {
+      console.error('Business alert email failed:', emailError);
       // Don't fail the booking if email fails
     }
 
@@ -640,6 +669,36 @@ export const updateAppointmentStatus = async (req, res) => {
       .set(updates)
       .where(eq(appointments.id, appointmentId));
 
+    // Send cancellation email if status is CANCELLED
+    if (status === 'CANCELLED') {
+      try {
+        const apt = appointment[0];
+        const businessData = business[0];
+
+        // Get service details
+        const service = await db.select().from(services)
+          .where(eq(services.id, apt.serviceId))
+          .limit(1);
+
+        if (service.length) {
+          await sendCancellationEmail({
+            to: apt.clientEmail,
+            clientName: `${apt.clientFirstName} ${apt.clientLastName}`,
+            businessName: businessData.businessName,
+            serviceName: service[0].name,
+            appointmentDate: apt.appointmentDate,
+            startTime: apt.startTime,
+            cancellationReason: cancellationReason || null,
+            businessPhone: businessData.phone,
+            businessEmail: businessData.email
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send cancellation email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
+
     res.json({
       success: true,
       message: `Appointment status updated to ${status}`
@@ -816,6 +875,26 @@ export const rescheduleAppointment = async (req, res) => {
         updatedAt: new Date().toISOString()
       })
       .where(eq(appointments.id, appointmentId));
+
+    // Send reschedule notification email
+    try {
+      const businessData = business[0];
+
+      await sendRescheduleEmail({
+        to: apt.clientEmail,
+        clientName: `${apt.clientFirstName} ${apt.clientLastName}`,
+        businessName: businessData.businessName,
+        serviceName: serviceData.name,
+        oldDate: apt.appointmentDate,
+        oldStartTime: apt.startTime,
+        newDate: appointmentDate,
+        newStartTime: startTime,
+        newEndTime: endTime
+      });
+    } catch (emailError) {
+      console.error('Failed to send reschedule email:', emailError);
+      // Don't fail the request if email fails
+    }
 
     res.json({
       success: true,
