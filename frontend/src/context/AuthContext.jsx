@@ -1,0 +1,122 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import {
+  login as loginService,
+  logout as logoutService,
+  register as registerService,
+  getCurrentUser,
+  isAuthenticated as checkAuth
+} from '../services/authService';
+
+const AuthContext = createContext(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Initialize auth state from localStorage
+  useEffect(() => {
+    const initAuth = () => {
+      try {
+        const currentUser = getCurrentUser();
+        const authStatus = checkAuth();
+
+        if (currentUser && authStatus) {
+          setUser(currentUser);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []);
+
+  /**
+   * Login user
+   * @param {string} email - User email
+   * @param {string} password - User password
+   */
+  const login = async (email, password) => {
+    try {
+      const response = await loginService(email, password);
+      setUser(response.user);
+      setIsAuthenticated(true);
+      return response;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Register new user
+   * @param {Object} userData - User registration data
+   */
+  const register = async (userData) => {
+    try {
+      const response = await registerService(userData);
+      setUser(response.user);
+      setIsAuthenticated(true);
+      return response;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Logout user
+   */
+  const logout = async () => {
+    try {
+      await logoutService();
+      setUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear state even if API call fails
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
+
+  /**
+   * Update user data in context
+   * @param {Object} userData - Updated user data
+   */
+  const updateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const value = {
+    user,
+    isAuthenticated,
+    loading,
+    login,
+    register,
+    logout,
+    updateUser,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export default AuthContext;
