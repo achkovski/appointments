@@ -126,6 +126,33 @@ export const isAuthenticated = () => {
   return !!getToken();
 };
 
+/**
+ * Update user information
+ * @param {string} userId - User ID
+ * @param {Object} userData - User data to update (firstName, lastName, email, phone)
+ * @returns {Promise} - Updated user data
+ */
+export const updateUser = async (userId, userData) => {
+  const response = await api.put(`/users/${userId}`, userData);
+
+  // Update user in localStorage
+  if (response.data.user) {
+    localStorage.setItem('user', JSON.stringify(response.data.user));
+  }
+
+  return response.data;
+};
+
+/**
+ * Change user password
+ * @param {Object} passwordData - Object containing currentPassword and newPassword
+ * @returns {Promise} - Password change confirmation
+ */
+export const changePassword = async (passwordData) => {
+  const response = await api.post('/auth/change-password', passwordData);
+  return response.data;
+};
+
 export default {
   register,
   login,
@@ -137,4 +164,6 @@ export default {
   getCurrentUser,
   getToken,
   isAuthenticated,
+  updateUser,
+  changePassword,
 };
