@@ -1,106 +1,118 @@
 import api from './api';
 
-const appointmentsService = {
-  // Get all appointments for a business
-  getAppointments: async (businessId, filters = {}) => {
-    try {
-      const params = new URLSearchParams();
+/**
+ * Get all appointments for a business
+ * @param {string} businessId - Business ID
+ * @param {Object} filters - Filter parameters
+ * @returns {Promise} - List of appointments
+ */
+export const getAppointments = async (businessId, filters = {}) => {
+  const params = new URLSearchParams();
 
-      if (filters.status) params.append('status', filters.status);
-      if (filters.startDate) params.append('startDate', filters.startDate);
-      if (filters.endDate) params.append('endDate', filters.endDate);
-      if (filters.search) params.append('search', filters.search);
-      if (filters.page) params.append('page', filters.page);
-      if (filters.limit) params.append('limit', filters.limit);
+  if (filters.status) params.append('status', filters.status);
+  if (filters.startDate) params.append('startDate', filters.startDate);
+  if (filters.endDate) params.append('endDate', filters.endDate);
+  if (filters.search) params.append('search', filters.search);
+  if (filters.page) params.append('page', filters.page);
+  if (filters.limit) params.append('limit', filters.limit);
 
-      const response = await api.get(`/appointments/business/${businessId}?${params}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  // Get single appointment
-  getAppointment: async (appointmentId) => {
-    try {
-      const response = await api.get(`/appointments/${appointmentId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  // Create new appointment (manual)
-  createAppointment: async (appointmentData) => {
-    try {
-      const response = await api.post('/appointments', appointmentData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  // Update appointment
-  updateAppointment: async (appointmentId, appointmentData) => {
-    try {
-      const response = await api.put(`/appointments/${appointmentId}`, appointmentData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  // Update appointment status
-  updateAppointmentStatus: async (appointmentId, status) => {
-    try {
-      const response = await api.put(`/appointments/${appointmentId}/status`, { status });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  // Confirm appointment
-  confirmAppointment: async (appointmentId) => {
-    try {
-      const response = await api.put(`/appointments/${appointmentId}/confirm`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  // Cancel appointment
-  cancelAppointment: async (appointmentId, reason) => {
-    try {
-      const response = await api.delete(`/appointments/${appointmentId}`, {
-        data: { reason },
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  // Get upcoming appointments
-  getUpcomingAppointments: async (businessId) => {
-    try {
-      const response = await api.get(`/appointments/upcoming?businessId=${businessId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  // Get past appointments
-  getPastAppointments: async (businessId) => {
-    try {
-      const response = await api.get(`/appointments/past?businessId=${businessId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
+  const response = await api.get(`/appointments/business/${businessId}?${params}`);
+  return response.data;
 };
 
-export default appointmentsService;
+/**
+ * Get single appointment by ID
+ * @param {string} appointmentId - Appointment ID
+ * @returns {Promise} - Appointment details
+ */
+export const getAppointment = async (appointmentId) => {
+  const response = await api.get(`/appointments/${appointmentId}`);
+  return response.data;
+};
+
+/**
+ * Create new appointment (manual)
+ * @param {Object} appointmentData - Appointment data
+ * @returns {Promise} - Created appointment
+ */
+export const createAppointment = async (appointmentData) => {
+  const response = await api.post('/appointments', appointmentData);
+  return response.data;
+};
+
+/**
+ * Update appointment
+ * @param {string} appointmentId - Appointment ID
+ * @param {Object} appointmentData - Updated appointment data
+ * @returns {Promise} - Updated appointment
+ */
+export const updateAppointment = async (appointmentId, appointmentData) => {
+  const response = await api.put(`/appointments/${appointmentId}`, appointmentData);
+  return response.data;
+};
+
+/**
+ * Update appointment status
+ * @param {string} appointmentId - Appointment ID
+ * @param {string} status - New status
+ * @returns {Promise} - Updated appointment
+ */
+export const updateAppointmentStatus = async (appointmentId, status) => {
+  const response = await api.put(`/appointments/${appointmentId}/status`, { status });
+  return response.data;
+};
+
+/**
+ * Confirm appointment
+ * @param {string} appointmentId - Appointment ID
+ * @returns {Promise} - Confirmed appointment
+ */
+export const confirmAppointment = async (appointmentId) => {
+  const response = await api.put(`/appointments/${appointmentId}/confirm`);
+  return response.data;
+};
+
+/**
+ * Cancel appointment
+ * @param {string} appointmentId - Appointment ID
+ * @param {string} reason - Cancellation reason
+ * @returns {Promise} - Cancellation confirmation
+ */
+export const cancelAppointment = async (appointmentId, reason) => {
+  const response = await api.delete(`/appointments/${appointmentId}`, {
+    data: { reason },
+  });
+  return response.data;
+};
+
+/**
+ * Get upcoming appointments for a business
+ * @param {string} businessId - Business ID
+ * @returns {Promise} - List of upcoming appointments
+ */
+export const getUpcomingAppointments = async (businessId) => {
+  const response = await api.get(`/appointments/upcoming?businessId=${businessId}`);
+  return response.data;
+};
+
+/**
+ * Get past appointments for a business
+ * @param {string} businessId - Business ID
+ * @returns {Promise} - List of past appointments
+ */
+export const getPastAppointments = async (businessId) => {
+  const response = await api.get(`/appointments/past?businessId=${businessId}`);
+  return response.data;
+};
+
+export default {
+  getAppointments,
+  getAppointment,
+  createAppointment,
+  updateAppointment,
+  updateAppointmentStatus,
+  confirmAppointment,
+  cancelAppointment,
+  getUpcomingAppointments,
+  getPastAppointments,
+};
