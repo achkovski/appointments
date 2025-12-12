@@ -13,6 +13,8 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { getServices } from '../../services/servicesService';
+import { createAppointment } from '../../services/appointmentsService';
 
 const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) => {
   // Form state
@@ -55,15 +57,17 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
 
   const fetchServices = async () => {
     try {
-      // TODO: Replace with actual API call
-      // Mock data for now
-      const mockServices = [
-        { id: '1', name: 'Haircut', duration: 60 },
-        { id: '2', name: 'Massage Therapy', duration: 90 },
-        { id: '3', name: 'Consultation', duration: 30 },
-      ];
-      setServices(mockServices);
+      const response = await getServices(businessId);
+      const servicesList = response.services || response || [];
+      // Only include active services
+      const activeServices = servicesList.filter(s => s.isActive);
+      setServices(activeServices);
+
+      if (activeServices.length === 0) {
+        setError('No services available. Please create services first in the Services page.');
+      }
     } catch (err) {
+      console.error('Error fetching services:', err);
       setError('Failed to load services');
     }
   };
@@ -129,14 +133,27 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      console.log('Creating appointment:', {
-        businessId,
-        ...formData
-      });
+      // Find selected service to get duration
+      const selectedService = services.find(s => s.id === formData.serviceId);
 
-      // Mock success
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Calculate end time based on service duration
+      const startDateTime = new Date(`${formData.appointmentDate}T${formData.startTime}`);
+      const endDateTime = new Date(startDateTime.getTime() + (selectedService.duration * 60000));
+      const endTime = endDateTime.toTimeString().slice(0, 5);
+
+      await createAppointment({
+        businessId,
+        serviceId: formData.serviceId,
+        appointmentDate: formData.appointmentDate,
+        startTime: formData.startTime,
+        endTime,
+        clientFirstName: formData.clientFirstName,
+        clientLastName: formData.clientLastName,
+        clientEmail: formData.clientEmail,
+        clientPhone: formData.clientPhone,
+        notes: formData.notes,
+        clientNotes: formData.clientNotes,
+      });
 
       // Reset form
       setFormData({
@@ -159,7 +176,8 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       // Close dialog
       onOpenChange(false);
     } catch (err) {
-      setError(err.message || 'Failed to create appointment');
+      console.error('Error creating appointment:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to create appointment');
     } finally {
       setLoading(false);
     }

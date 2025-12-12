@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -26,7 +26,7 @@ const CAPACITY_MODES = [
 
 const BusinessSetup = () => {
   const navigate = useNavigate();
-  const { setBusinessId } = useBusiness();
+  const { business, loading: businessLoading, setBusinessId } = useBusiness();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
@@ -40,6 +40,13 @@ const BusinessSetup = () => {
     defaultCapacity: 1,
   });
   const [errors, setErrors] = useState({});
+
+  // Redirect to dashboard if business already exists
+  useEffect(() => {
+    if (!businessLoading && business) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [business, businessLoading, navigate]);
 
   const validateForm = () => {
     const newErrors = {};

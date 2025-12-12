@@ -182,7 +182,7 @@ const Availability = () => {
 
     try {
       setActionLoading(true);
-      await updateAvailability(selectedItem.id, hoursForm);
+      await updateAvailability(business.id, selectedItem.id, hoursForm);
       await fetchData();
       setShowEditHoursDialog(false);
       setSelectedItem(null);
@@ -217,7 +217,7 @@ const Availability = () => {
 
     try {
       setActionLoading(true);
-      await updateSpecialDate(selectedItem.id, specialDateForm);
+      await updateSpecialDate(business.id, selectedItem.id, specialDateForm);
       await fetchData();
       setShowEditSpecialDateDialog(false);
       setSelectedItem(null);
@@ -234,9 +234,9 @@ const Availability = () => {
     try {
       setActionLoading(true);
       if (deleteType === 'hours') {
-        await deleteAvailability(selectedItem.id);
+        await deleteAvailability(business.id, selectedItem.id);
       } else if (deleteType === 'special') {
-        await deleteSpecialDate(selectedItem.id);
+        await deleteSpecialDate(business.id, selectedItem.id);
       }
       await fetchData();
       setShowDeleteDialog(false);
