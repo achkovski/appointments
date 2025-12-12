@@ -445,6 +445,7 @@ created_at (TIMESTAMP)
 - Connect Availability page with their corresponding API endpoints to enable full functionality
 - Connect Business Profile page with their corresponding API endpoints to enable full functionality
 - Connect Settings page with their corresponding API endpoints to enable full functionality
+- Add additional UI/UX improvements
 
 ### Phase 8: Analytics
 - Data aggregation queries

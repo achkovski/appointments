@@ -24,6 +24,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useBusiness } from '../../context/BusinessContext';
+import { useToast } from '../../hooks/use-toast';
 import {
   getServices,
   createService,
@@ -36,6 +37,7 @@ const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
 
 const Services = () => {
   const { business, loading: businessLoading } = useBusiness();
+  const { toast } = useToast();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -121,9 +123,18 @@ const Services = () => {
       await fetchServices();
       setShowAddDialog(false);
       resetForm();
+      toast({
+        title: "Success!",
+        description: "Service created successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error creating service:', err);
-      alert(err.response?.data?.message || 'Failed to create service');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to create service',
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -143,9 +154,18 @@ const Services = () => {
       setShowEditDialog(false);
       setSelectedService(null);
       resetForm();
+      toast({
+        title: "Success!",
+        description: "Service updated successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error updating service:', err);
-      alert(err.response?.data?.message || 'Failed to update service');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to update service',
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -158,9 +178,18 @@ const Services = () => {
       await fetchServices();
       setShowDeleteDialog(false);
       setSelectedService(null);
+      toast({
+        title: "Success!",
+        description: "Service deleted successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error deleting service:', err);
-      alert(err.response?.data?.message || 'Failed to delete service');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to delete service',
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -170,9 +199,18 @@ const Services = () => {
     try {
       await toggleServiceStatus(service.id);
       await fetchServices();
+      toast({
+        title: "Success!",
+        description: `Service ${service.isActive ? 'deactivated' : 'activated'} successfully`,
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error toggling service status:', err);
-      alert(err.response?.data?.message || 'Failed to toggle service status');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to toggle service status',
+        variant: "destructive",
+      });
     }
   };
 
@@ -258,38 +296,40 @@ const Services = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
             <Card key={service.id} className={!service.isActive ? 'opacity-60' : ''}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center gap-2">
-                      {service.name}
-                      {!service.isActive && (
-                        <Badge variant="secondary">Inactive</Badge>
-                      )}
-                    </CardTitle>
-                    {service.description && (
-                      <CardDescription className="mt-2">
-                        {service.description}
-                      </CardDescription>
+              <CardHeader className="pb-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">{service.name}</CardTitle>
+                    {!service.isActive && (
+                      <Badge variant="secondary">Inactive</Badge>
                     )}
                   </div>
+                  {service.description && (
+                    <CardDescription className="line-clamp-2">
+                      {service.description}
+                    </CardDescription>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{service.duration} minutes</span>
-                  </div>
-                  {service.price && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span>${service.price}</span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-5 h-5">
+                      <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     </div>
-                  )}
+                    <span className="text-sm">{service.duration} minutes</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-5 h-5">
+                      <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    </div>
+                    <span className="text-sm">
+                      {service.price ? `$${service.price}` : '$0'}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-3 border-t">
                   <Button
                     variant="outline"
                     size="sm"
