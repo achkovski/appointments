@@ -126,6 +126,7 @@ export const createBusiness = async (req, res) => {
 
     // Create business
     const now = new Date().toISOString();
+    const normalizedCapacityMode = capacityMode.toUpperCase();
     const [newBusiness] = await db.insert(businesses).values({
       id: generateId(),
       ownerId: req.user.id,
@@ -138,12 +139,12 @@ export const createBusiness = async (req, res) => {
       website: website || null,
       businessType: businessType || null,
       qrCodeUrl,
-      capacityMode,
-      defaultCapacity: capacityMode === 'MULTIPLE' ? defaultCapacity : 1,
+      capacityMode: normalizedCapacityMode,
+      defaultCapacity: normalizedCapacityMode === 'MULTIPLE' ? defaultCapacity : 1,
       defaultSlotInterval,
       autoConfirm,
       requireEmailConfirmation,
-      settings: settings || null,
+      settings,
       updatedAt: now,
     }).returning();
 
