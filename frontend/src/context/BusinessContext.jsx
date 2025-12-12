@@ -38,7 +38,8 @@ export const BusinessProvider = ({ children }) => {
 
     if (!businessId) {
       setLoading(false);
-      setError('No business ID found');
+      setError(null); // No error - user just doesn't have a business yet
+      setBusiness(null);
       return;
     }
 

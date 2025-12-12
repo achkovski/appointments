@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calendar,
@@ -15,10 +15,44 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
+import { useBusiness } from '../../context/BusinessContext';
+import { useAuth } from '../../context/AuthContext';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { business, loading: businessLoading } = useBusiness();
+  const { user, logout } = useAuth();
+
+  // Redirect to setup if no business exists
+  useEffect(() => {
+    if (!businessLoading && !business) {
+      navigate('/setup', { replace: true });
+    }
+  }, [business, businessLoading, navigate]);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  // Show loading while checking for business
+  if (businessLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard if no business
+  if (!business) {
+    return null;
+  }
 
   const navigation = [
     {
@@ -137,18 +171,20 @@ const DashboardLayout = () => {
                   <User className="h-5 w-5" />
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <p className="truncate text-sm font-medium">Business User</p>
+                  <p className="truncate text-sm font-medium">
+                    {user?.firstName} {user?.lastName}
+                  </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    user@example.com
+                    {user?.email}
                   </p>
                 </div>
-                <Button variant="ghost" size="icon" title="Logout">
+                <Button variant="ghost" size="icon" title="Logout" onClick={handleLogout}>
                   <LogOut className="h-5 w-5" />
                 </Button>
               </>
             ) : (
-              <Button variant="ghost" size="icon" title="User Profile">
-                <User className="h-5 w-5" />
+              <Button variant="ghost" size="icon" title="Logout" onClick={handleLogout}>
+                <LogOut className="h-5 w-5" />
               </Button>
             )}
           </div>

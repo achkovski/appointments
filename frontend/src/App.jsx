@@ -4,6 +4,7 @@ import { BusinessProvider } from './context/BusinessContext';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import BusinessSetup from './pages/BusinessSetup';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Overview from './pages/dashboard/Overview';
 import Appointments from './pages/dashboard/Appointments';
@@ -22,6 +23,18 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Protected business setup */}
+          <Route
+            path="/setup"
+            element={
+              <PrivateRoute>
+                <BusinessProvider>
+                  <BusinessSetup />
+                </BusinessProvider>
+              </PrivateRoute>
+            }
+          />
 
           {/* Redirect root to dashboard */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

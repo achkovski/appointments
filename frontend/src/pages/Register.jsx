@@ -68,7 +68,26 @@ const Register = () => {
       navigate('/dashboard');
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err.response?.data?.message || 'Failed to create account. Please try again.');
+
+      // Extract detailed error message from backend
+      let errorMessage = 'Failed to create account. Please try again.';
+
+      if (err.response?.data) {
+        // Check for validation errors array
+        if (err.response.data.errors && Array.isArray(err.response.data.errors)) {
+          errorMessage = err.response.data.errors.map(e => e.message || e.msg).join(', ');
+        }
+        // Check for single error message
+        else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        }
+        // Check for error string
+        else if (err.response.data.error) {
+          errorMessage = err.response.data.error;
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
