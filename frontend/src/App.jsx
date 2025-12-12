@@ -14,6 +14,8 @@ import Availability from './pages/dashboard/Availability';
 import Analytics from './pages/dashboard/Analytics';
 import BusinessProfile from './pages/dashboard/BusinessProfile';
 import Settings from './pages/dashboard/Settings';
+import BookingPage from './pages/BookingPage';
+import ConfirmAppointment from './pages/ConfirmAppointment';
 import { Toaster } from './components/ui/toaster';
 
 function App() {
@@ -24,6 +26,10 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Public booking routes */}
+          <Route path="/book/:slug" element={<BookingPage />} />
+          <Route path="/confirm-appointment" element={<ConfirmAppointment />} />
 
           {/* Protected business setup */}
           <Route
