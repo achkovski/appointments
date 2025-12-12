@@ -295,27 +295,9 @@ const Settings = () => {
           <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="font-medium">Auto-confirm appointments</p>
-                <p className="text-sm text-muted-foreground">
-                  Automatically confirm bookings without manual approval
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={bookingSettings.autoConfirm}
-                  onChange={(e) => handleBookingSettingChange('autoConfirm', e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
                 <p className="font-medium">Require email confirmation</p>
                 <p className="text-sm text-muted-foreground">
-                  Clients must confirm via email before booking is finalized
+                  When enabled, clients must verify their email before booking. When disabled, all appointments are automatically confirmed.
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">

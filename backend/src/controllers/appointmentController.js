@@ -123,12 +123,18 @@ export const createGuestAppointment = async (req, res) => {
     const endMins = endMinutes % 60;
     const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 
-    // Determine initial status
-    const initialStatus = businessData.autoConfirm ? 'CONFIRMED' : 'PENDING';
-
-    // Generate email confirmation token if required
+    // Determine initial status based on requireEmailConfirmation
+    // If email confirmation is NOT required, appointments are auto-confirmed
+    // If email confirmation IS required, appointments start as PENDING (need email + manual approval)
+    let initialStatus;
     let emailConfirmationToken = null;
-    if (businessData.requireEmailConfirmation) {
+
+    if (!businessData.requireEmailConfirmation) {
+      // No email confirmation required = instant booking (auto-confirmed)
+      initialStatus = 'CONFIRMED';
+    } else {
+      // Email confirmation required = needs verification then manual approval
+      initialStatus = 'PENDING';
       emailConfirmationToken = crypto.randomBytes(32).toString('hex');
     }
 
@@ -145,9 +151,9 @@ export const createGuestAppointment = async (req, res) => {
       appointmentDate,
       startTime,
       endTime,
-      status: businessData.requireEmailConfirmation ? 'PENDING' : initialStatus,
+      status: initialStatus,
       isEmailConfirmed: !businessData.requireEmailConfirmation,
-      emailConfirmationToken: businessData.requireEmailConfirmation
+      emailConfirmationToken: emailConfirmationToken
         ? crypto.createHash('sha256').update(emailConfirmationToken).digest('hex')
         : null,
       notes: null,
@@ -206,9 +212,7 @@ export const createGuestAppointment = async (req, res) => {
       success: true,
       message: businessData.requireEmailConfirmation
         ? 'Appointment created! Please check your email to confirm.'
-        : businessData.autoConfirm
-          ? 'Appointment confirmed!'
-          : 'Appointment request submitted. You will receive confirmation soon.',
+        : 'Appointment confirmed!',
       appointment: {
         id: newAppointment.id,
         businessName: businessData.businessName,
@@ -288,10 +292,9 @@ export const confirmAppointmentEmail = async (req, res) => {
 
     const businessData = business[0];
 
-    // Determine final status based on autoConfirm setting
-    // Email confirmation marks email as verified
-    // But status depends on whether business requires manual approval
-    const newStatus = businessData.autoConfirm ? 'CONFIRMED' : 'PENDING';
+    // After email confirmation, appointment still needs manual approval (PENDING)
+    // Business owner must click "Confirm Appointment" to change status to CONFIRMED
+    const newStatus = 'PENDING';
 
     // Update appointment status
     await db.update(appointments)
@@ -305,12 +308,10 @@ export const confirmAppointmentEmail = async (req, res) => {
 
     res.json({
       success: true,
-      message: newStatus === 'CONFIRMED'
-        ? 'Appointment confirmed successfully!'
-        : 'Email verified! Your appointment is pending business confirmation.',
+      message: 'Email verified! Your appointment is pending business confirmation.',
       data: {
         status: newStatus,
-        requiresBusinessApproval: !businessData.autoConfirm
+        requiresBusinessApproval: true
       }
     });
 
@@ -370,7 +371,32 @@ export const getBusinessAppointments = async (req, res) => {
       conditions.push(gte(appointments.appointmentDate, startDate));
     }
 
-    const appointmentsList = await db.select().from(appointments)
+    // Fetch appointments with service information
+    const appointmentsList = await db.select({
+      id: appointments.id,
+      businessId: appointments.businessId,
+      serviceId: appointments.serviceId,
+      clientUserId: appointments.clientUserId,
+      clientFirstName: appointments.clientFirstName,
+      clientLastName: appointments.clientLastName,
+      clientEmail: appointments.clientEmail,
+      clientPhone: appointments.clientPhone,
+      appointmentDate: appointments.appointmentDate,
+      startTime: appointments.startTime,
+      endTime: appointments.endTime,
+      status: appointments.status,
+      isEmailConfirmed: appointments.isEmailConfirmed,
+      notes: appointments.notes,
+      clientNotes: appointments.clientNotes,
+      cancellationReason: appointments.cancellationReason,
+      createdAt: appointments.createdAt,
+      updatedAt: appointments.updatedAt,
+      serviceName: services.name,
+      serviceDuration: services.duration,
+      servicePrice: services.price
+    })
+      .from(appointments)
+      .leftJoin(services, eq(appointments.serviceId, services.id))
       .where(and(...conditions))
       .orderBy(appointments.appointmentDate, appointments.startTime);
 

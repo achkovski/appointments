@@ -255,6 +255,28 @@ const AppointmentDetail = () => {
     }
   };
 
+  const handleUnapprove = async () => {
+    try {
+      setActionLoading(true);
+      await updateAppointmentStatus(id, 'PENDING');
+      setAppointment({ ...appointment, status: 'PENDING' });
+      toast({
+        title: "Success!",
+        description: "Appointment set to pending",
+        variant: "success",
+      });
+    } catch (err) {
+      console.error('Error unapproving appointment:', err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to unapprove appointment',
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleContactClient = (method) => {
     if (method === 'email') {
       window.location.href = `mailto:${appointment.clientEmail}`;
@@ -519,7 +541,17 @@ const AppointmentDetail = () => {
             {appointment.status?.toUpperCase() === 'PENDING' && (
               <Button onClick={() => setShowConfirmDialog(true)} disabled={actionLoading}>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Confirm Appointment
+                Approve Appointment
+              </Button>
+            )}
+            {appointment.status?.toUpperCase() === 'CONFIRMED' && (
+              <Button
+                variant="outline"
+                onClick={() => handleUnapprove()}
+                disabled={actionLoading}
+              >
+                <AlertCircle className="mr-2 h-4 w-4" />
+                Unapprove (Set to Pending)
               </Button>
             )}
             {(appointment.status?.toUpperCase() === 'PENDING' || appointment.status?.toUpperCase() === 'CONFIRMED') && (

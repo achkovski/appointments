@@ -43,6 +43,7 @@ const Appointments = () => {
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -73,9 +74,22 @@ const Appointments = () => {
     }
   };
 
-  // Filter appointments based on status
+  // Filter appointments based on status and date
   useEffect(() => {
     let filtered = appointments;
+
+    // Apply Today Only filter first
+    if (showTodayOnly) {
+      filtered = filtered.filter((apt) => {
+        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const statusUpper = apt.status?.toUpperCase();
+        return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
+      });
+    }
 
     // Apply status filter
     if (activeFilter !== 'all') {
@@ -116,7 +130,7 @@ const Appointments = () => {
 
     setFilteredAppointments(filtered);
     setCurrentPage(1);
-  }, [activeFilter, searchQuery, appointments]);
+  }, [activeFilter, searchQuery, appointments, showTodayOnly]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
@@ -233,20 +247,36 @@ const Appointments = () => {
 
       {/* Filters and Search */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-2">
-          {filterButtons.map((filter) => (
-            <Button
-              key={filter.key}
-              variant={activeFilter === filter.key ? 'default' : 'outline'}
-              onClick={() => setActiveFilter(filter.key)}
-              className="gap-2"
-            >
-              {filter.label}
-              <Badge variant={activeFilter === filter.key ? 'secondary' : 'outline'}>
-                {filter.count}
-              </Badge>
-            </Button>
-          ))}
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex flex-wrap gap-2">
+            {filterButtons.map((filter) => (
+              <Button
+                key={filter.key}
+                variant={activeFilter === filter.key ? 'default' : 'outline'}
+                onClick={() => setActiveFilter(filter.key)}
+                className="gap-2"
+              >
+                {filter.label}
+                <Badge variant={activeFilter === filter.key ? 'secondary' : 'outline'}>
+                  {filter.count}
+                </Badge>
+              </Button>
+            ))}
+          </div>
+
+          {/* Today Only Toggle */}
+          <div className="flex items-center gap-2 border rounded-md px-3 py-2">
+            <label htmlFor="today-toggle" className="text-sm font-medium cursor-pointer">
+              Today Only
+            </label>
+            <input
+              id="today-toggle"
+              type="checkbox"
+              checked={showTodayOnly}
+              onChange={(e) => setShowTodayOnly(e.target.checked)}
+              className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
+            />
+          </div>
         </div>
 
         <div className="relative w-full md:w-96">
