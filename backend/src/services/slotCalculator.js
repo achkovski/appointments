@@ -207,12 +207,13 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       throw new Error('Invalid date format. Use YYYY-MM-DD');
     }
 
-    // Check if date is in the past
-    const requestedDate = new Date(dateStr);
+    // Check if date is in the past (compare date strings to avoid timezone issues)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayStr = today.getFullYear() + '-' +
+      String(today.getMonth() + 1).padStart(2, '0') + '-' +
+      String(today.getDate()).padStart(2, '0');
 
-    if (requestedDate < today) {
+    if (dateStr < todayStr) {
       return {
         date: dateStr,
         available: false,
