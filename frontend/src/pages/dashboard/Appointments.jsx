@@ -32,6 +32,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import CreateAppointmentDialog from '../../components/appointments/CreateAppointmentDialog';
+import StatusBadge from '../../components/appointments/StatusBadge';
 import { useBusiness } from '../../context/BusinessContext';
 import { getAppointments } from '../../services/appointmentsService';
 
@@ -124,24 +125,7 @@ const Appointments = () => {
   const currentAppointments = filteredAppointments.slice(startIndex, endIndex);
 
   const getStatusBadge = (status) => {
-    const statusUpper = status?.toUpperCase();
-    const variants = {
-      CONFIRMED: { variant: 'success', label: 'Confirmed', icon: CheckCircle },
-      PENDING: { variant: 'warning', label: 'Pending', icon: AlertCircle },
-      CANCELLED: { variant: 'destructive', label: 'Cancelled', icon: XCircle },
-      COMPLETED: { variant: 'secondary', label: 'Completed', icon: CheckCircle },
-      NO_SHOW: { variant: 'outline', label: 'No Show', icon: XCircle },
-    };
-
-    const config = variants[statusUpper] || variants.PENDING;
-    const Icon = config.icon;
-
-    return (
-      <Badge variant={config.variant} className="flex items-center gap-1 w-fit">
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </Badge>
-    );
+    return <StatusBadge status={status} size="sm" />;
   };
 
   const formatDate = (dateString) => {

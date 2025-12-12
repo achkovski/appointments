@@ -274,11 +274,30 @@ export const confirmAppointmentEmail = async (req, res) => {
       });
     }
 
+    // Get business settings to check autoConfirm
+    const business = await db.select().from(businesses)
+      .where(eq(businesses.id, apt.businessId))
+      .limit(1);
+
+    if (!business.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found'
+      });
+    }
+
+    const businessData = business[0];
+
+    // Determine final status based on autoConfirm setting
+    // Email confirmation marks email as verified
+    // But status depends on whether business requires manual approval
+    const newStatus = businessData.autoConfirm ? 'CONFIRMED' : 'PENDING';
+
     // Update appointment status
     await db.update(appointments)
       .set({
         isEmailConfirmed: true,
-        status: 'CONFIRMED',
+        status: newStatus,
         emailConfirmationToken: null,
         updatedAt: new Date().toISOString()
       })
@@ -286,7 +305,13 @@ export const confirmAppointmentEmail = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Appointment confirmed successfully!'
+      message: newStatus === 'CONFIRMED'
+        ? 'Appointment confirmed successfully!'
+        : 'Email verified! Your appointment is pending business confirmation.',
+      data: {
+        status: newStatus,
+        requiresBusinessApproval: !businessData.autoConfirm
+      }
     });
 
   } catch (error) {
@@ -916,6 +941,108 @@ export const rescheduleAppointment = async (req, res) => {
   }
 };
 
+/**
+ * Confirm appointment (business owner manual approval)
+ * PUT /api/appointments/:appointmentId/confirm
+ */
+export const confirmAppointment = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const userId = req.user.id;
+
+    // Get appointment with business info
+    const appointment = await db.select({
+      appointment: appointments,
+      business: businesses
+    })
+      .from(appointments)
+      .innerJoin(businesses, eq(appointments.businessId, businesses.id))
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+
+    if (!appointment.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    const { appointment: apt, business } = appointment[0];
+
+    // Verify ownership
+    if (business.ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to confirm this appointment'
+      });
+    }
+
+    // Check if already confirmed
+    if (apt.status === 'CONFIRMED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Appointment is already confirmed'
+      });
+    }
+
+    // Check if cancelled
+    if (apt.status === 'CANCELLED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot confirm a cancelled appointment'
+      });
+    }
+
+    // Update status to CONFIRMED
+    await db.update(appointments)
+      .set({
+        status: 'CONFIRMED',
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(appointments.id, appointmentId));
+
+    // Send confirmation email to client
+    try {
+      const service = await db.select().from(services)
+        .where(eq(services.id, apt.serviceId))
+        .limit(1);
+
+      if (service.length) {
+        await sendAppointmentConfirmationEmail({
+          to: apt.clientEmail,
+          clientName: `${apt.clientFirstName} ${apt.clientLastName}`,
+          businessName: business.businessName,
+          serviceName: service[0].name,
+          appointmentDate: apt.appointmentDate,
+          startTime: apt.startTime,
+          endTime: apt.endTime,
+          requiresConfirmation: false,
+          confirmationToken: null
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send confirmation email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.json({
+      success: true,
+      message: 'Appointment confirmed successfully',
+      data: {
+        status: 'CONFIRMED'
+      }
+    });
+
+  } catch (error) {
+    console.error('Confirm appointment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to confirm appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   createGuestAppointment,
   confirmAppointmentEmail,
@@ -924,5 +1051,6 @@ export default {
   getAppointmentById,
   updateAppointmentStatus,
   updateAppointmentNotes,
-  rescheduleAppointment
+  rescheduleAppointment,
+  confirmAppointment
 };

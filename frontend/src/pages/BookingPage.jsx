@@ -9,6 +9,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
+import StatusBadge from '../components/appointments/StatusBadge';
 import { useToast } from '../hooks/use-toast';
 import {
   getBusinessBySlug,
@@ -648,15 +649,42 @@ const BookingPage = () => {
             <Card>
               <CardContent className="py-12 text-center">
                 <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold mb-2">Booking Confirmed!</h2>
+                <h2 className="text-2xl font-bold mb-2">
+                  {bookingResult?.status === 'CONFIRMED' ? 'Booking Confirmed!' : 'Booking Received!'}
+                </h2>
                 <p className="text-gray-600 mb-6">
-                  Your appointment has been successfully booked.
+                  {bookingResult?.status === 'CONFIRMED'
+                    ? 'Your appointment has been confirmed and is scheduled.'
+                    : 'Your appointment request has been submitted.'}
                 </p>
 
+                {/* Email Confirmation Required */}
                 {bookingResult?.requiresEmailConfirmation && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <p className="text-blue-800">
-                      Please check your email to confirm your appointment.
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
+                    <p className="font-semibold text-blue-900 mb-1">Email Confirmation Required</p>
+                    <p className="text-blue-800 text-sm">
+                      Please check your email and click the confirmation link to verify your booking.
+                      {bookingResult?.status === 'PENDING' && ' After email verification, the business will review your appointment.'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Business Approval Required (no email confirmation) */}
+                {!bookingResult?.requiresEmailConfirmation && bookingResult?.status === 'PENDING' && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
+                    <p className="font-semibold text-yellow-900 mb-1">Pending Business Approval</p>
+                    <p className="text-yellow-800 text-sm">
+                      Your appointment is pending review by the business. You will receive a confirmation email once approved.
+                    </p>
+                  </div>
+                )}
+
+                {/* Confirmed Instantly */}
+                {bookingResult?.status === 'CONFIRMED' && !bookingResult?.requiresEmailConfirmation && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
+                    <p className="font-semibold text-green-900 mb-1">Appointment Confirmed</p>
+                    <p className="text-green-800 text-sm">
+                      Your appointment is confirmed! You will receive a reminder email before your scheduled time.
                     </p>
                   </div>
                 )}
@@ -675,11 +703,9 @@ const BookingPage = () => {
                       <span className="font-medium">Time:</span> {selectedTimeSlot?.startTime} -{' '}
                       {selectedTimeSlot?.endTime}
                     </p>
-                    <p>
-                      <span className="font-medium">Status:</span>{' '}
-                      <Badge variant={bookingResult?.status === 'CONFIRMED' ? 'default' : 'secondary'}>
-                        {bookingResult?.status || 'PENDING'}
-                      </Badge>
+                    <p className="flex items-center gap-2">
+                      <span className="font-medium">Status:</span>
+                      <StatusBadge status={bookingResult?.status || 'PENDING'} size="sm" />
                     </p>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
+import StatusBadge from '../components/appointments/StatusBadge';
 import { confirmAppointment } from '../services/publicBookingService';
 import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
@@ -120,12 +121,14 @@ const ConfirmAppointment = () => {
             </div>
           )}
 
-          {status === 'success' && (
+          {status === 'success' && appointmentData && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800">
               <p className="font-medium mb-1">What's next?</p>
               <p>
-                You will receive a reminder email before your appointment. If you need to cancel
-                or reschedule, please contact the business directly.
+                {appointmentData.requiresBusinessApproval
+                  ? 'Your email has been verified. The business will review and confirm your appointment shortly.'
+                  : 'Your appointment is confirmed! You will receive a reminder email before your scheduled time.'}
+                {' '}If you need to cancel or reschedule, please contact the business directly.
               </p>
             </div>
           )}

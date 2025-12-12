@@ -5,7 +5,8 @@ import {
   getAppointmentById,
   updateAppointmentStatus,
   updateAppointmentNotes,
-  rescheduleAppointment
+  rescheduleAppointment,
+  confirmAppointment
 } from '../controllers/appointmentController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -37,6 +38,13 @@ router.get('/appointments/business/:businessId', protect, getBusinessAppointment
  * @access  Private (Business Owner)
  */
 router.get('/appointments/:appointmentId', protect, getAppointmentById);
+
+/**
+ * @route   PUT /api/appointments/:appointmentId/confirm
+ * @desc    Confirm pending appointment (manual approval)
+ * @access  Private (Business Owner)
+ */
+router.put('/appointments/:appointmentId/confirm', protect, confirmAppointment);
 
 /**
  * @route   PUT /api/appointments/:appointmentId/status

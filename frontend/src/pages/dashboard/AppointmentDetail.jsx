@@ -10,6 +10,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Textarea } from '../../components/ui/textarea';
+import StatusBadge from '../../components/appointments/StatusBadge';
 import {
   ArrowLeft,
   Calendar,
@@ -86,24 +87,7 @@ const AppointmentDetail = () => {
   };
 
   const getStatusBadge = (status) => {
-    const statusUpper = status?.toUpperCase();
-    const variants = {
-      CONFIRMED: { variant: 'success', label: 'Confirmed', icon: CheckCircle, color: 'text-green-600' },
-      PENDING: { variant: 'warning', label: 'Pending', icon: AlertCircle, color: 'text-yellow-600' },
-      CANCELLED: { variant: 'destructive', label: 'Cancelled', icon: XCircle, color: 'text-red-600' },
-      COMPLETED: { variant: 'secondary', label: 'Completed', icon: CheckCircle, color: 'text-gray-600' },
-      NO_SHOW: { variant: 'outline', label: 'No Show', icon: XCircle, color: 'text-gray-500' },
-    };
-
-    const config = variants[statusUpper] || variants.PENDING;
-    const Icon = config.icon;
-
-    return (
-      <Badge variant={config.variant} className="flex items-center gap-1 w-fit">
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </Badge>
-    );
+    return <StatusBadge status={status} />;
   };
 
   const formatDate = (dateString) => {
