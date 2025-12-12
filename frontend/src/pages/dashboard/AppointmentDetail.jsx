@@ -43,10 +43,12 @@ import {
   confirmAppointment as confirmAppointmentService,
   cancelAppointment as cancelAppointmentService,
 } from '../../services/appointmentsService';
+import { useToast } from '../../hooks/use-toast';
 
 const AppointmentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // State
   const [appointment, setAppointment] = useState(null);
@@ -142,9 +144,18 @@ const AppointmentDetail = () => {
       await updateAppointment(id, { notes });
       setAppointment({ ...appointment, notes });
       setIsEditingNotes(false);
+      toast({
+        title: "Success!",
+        description: "Notes saved successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error saving notes:', err);
-      alert(err.response?.data?.message || 'Failed to save notes');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to save notes',
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -156,9 +167,18 @@ const AppointmentDetail = () => {
       await confirmAppointmentService(id);
       setAppointment({ ...appointment, status: 'CONFIRMED' });
       setShowConfirmDialog(false);
+      toast({
+        title: "Success!",
+        description: "Appointment confirmed successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error confirming appointment:', err);
-      alert(err.response?.data?.message || 'Failed to confirm appointment');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to confirm appointment',
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -171,9 +191,18 @@ const AppointmentDetail = () => {
       setAppointment({ ...appointment, status: 'CANCELLED', cancellationReason });
       setShowCancelDialog(false);
       setCancellationReason('');
+      toast({
+        title: "Success!",
+        description: "Appointment cancelled successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error cancelling appointment:', err);
-      alert(err.response?.data?.message || 'Failed to cancel appointment');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to cancel appointment',
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -203,9 +232,18 @@ const AppointmentDetail = () => {
       setShowRescheduleDialog(false);
       setRescheduleDate('');
       setRescheduleTime('');
+      toast({
+        title: "Success!",
+        description: "Appointment rescheduled successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error rescheduling appointment:', err);
-      alert(err.response?.data?.message || 'Failed to reschedule appointment');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to reschedule appointment',
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -216,9 +254,18 @@ const AppointmentDetail = () => {
       setActionLoading(true);
       await updateAppointmentStatus(id, 'COMPLETED');
       setAppointment({ ...appointment, status: 'COMPLETED' });
+      toast({
+        title: "Success!",
+        description: "Appointment marked as completed",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error marking as completed:', err);
-      alert(err.response?.data?.message || 'Failed to mark as completed');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to mark as completed',
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }

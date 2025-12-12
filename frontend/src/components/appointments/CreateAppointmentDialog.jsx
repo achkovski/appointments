@@ -16,9 +16,11 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { getServices } from '../../services/servicesService';
 import { createAppointment, getAvailableSlots } from '../../services/appointmentsService';
 import { useBusiness } from '../../context/BusinessContext';
+import { useToast } from '../../hooks/use-toast';
 
 const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) => {
   const { business } = useBusiness();
+  const { toast } = useToast();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -67,11 +69,19 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       setServices(activeServices);
 
       if (activeServices.length === 0) {
-        setError('No services available. Please create services first in the Services page.');
+        toast({
+          title: "No Services",
+          description: "Please create services first in the Services page.",
+          variant: "warning",
+        });
       }
     } catch (err) {
       console.error('Error fetching services:', err);
-      setError('Failed to load services');
+      toast({
+        title: "Error",
+        description: "Failed to load services",
+        variant: "destructive",
+      });
     }
   };
 
@@ -97,15 +107,27 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
           setAvailableSlots(slotsData.slots);
         } else {
           setAvailableSlots([]);
-          setError(slotsData.reason || 'No available slots for this date');
+          toast({
+            title: "No Slots Available",
+            description: slotsData.reason || 'No available slots for this date',
+            variant: "warning",
+          });
         }
       } else {
         setAvailableSlots([]);
-        setError('No available slots for this date');
+        toast({
+          title: "No Slots Available",
+          description: "No available slots for this date",
+          variant: "warning",
+        });
       }
     } catch (err) {
       console.error('Error fetching available slots:', err);
-      setError(err.response?.data?.message || 'Failed to load available time slots');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to load available time slots',
+        variant: "destructive",
+      });
       setAvailableSlots([]);
     } finally {
       setLoadingSlots(false);
@@ -187,6 +209,13 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
         clientNotes: '',
       });
 
+      // Show success toast
+      toast({
+        title: "Success!",
+        description: "Appointment created successfully",
+        variant: "success",
+      });
+
       // Call success callback
       if (onSuccess) {
         onSuccess();
@@ -196,7 +225,11 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       onOpenChange(false);
     } catch (err) {
       console.error('Error creating appointment:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to create appointment');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || err.message || 'Failed to create appointment',
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

@@ -14,6 +14,7 @@ import Availability from './pages/dashboard/Availability';
 import Analytics from './pages/dashboard/Analytics';
 import BusinessProfile from './pages/dashboard/BusinessProfile';
 import Settings from './pages/dashboard/Settings';
+import { Toaster } from './components/ui/toaster';
 
 function App() {
   return (
@@ -63,6 +64,7 @@ function App() {
           {/* Catch all - redirect to dashboard */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        <Toaster />
       </Router>
     </AuthProvider>
   );
