@@ -14,9 +14,12 @@ import { Textarea } from '../ui/textarea';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { getServices } from '../../services/servicesService';
-import { createAppointment } from '../../services/appointmentsService';
+import { createAppointment, getAvailableSlots } from '../../services/appointmentsService';
+import { useBusiness } from '../../context/BusinessContext';
 
 const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) => {
+  const { business } = useBusiness();
+
   // Form state
   const [formData, setFormData] = useState({
     serviceId: '',
@@ -73,21 +76,37 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
   };
 
   const fetchAvailableSlots = async () => {
+    if (!business?.slug || !formData.serviceId || !formData.appointmentDate) {
+      return;
+    }
+
     setLoadingSlots(true);
+    setError(null);
+
     try {
-      // TODO: Replace with actual API call
-      // Mock data for now
-      const mockSlots = [
-        { startTime: '09:00', available: true },
-        { startTime: '10:00', available: true },
-        { startTime: '11:00', available: false },
-        { startTime: '14:00', available: true },
-        { startTime: '15:00', available: true },
-        { startTime: '16:00', available: true },
-      ];
-      setAvailableSlots(mockSlots.filter(slot => slot.available));
+      const response = await getAvailableSlots(
+        business.slug,
+        formData.serviceId,
+        formData.appointmentDate
+      );
+
+      if (response.success && response.data) {
+        const slotsData = response.data;
+
+        if (slotsData.available && slotsData.slots && slotsData.slots.length > 0) {
+          setAvailableSlots(slotsData.slots);
+        } else {
+          setAvailableSlots([]);
+          setError(slotsData.reason || 'No available slots for this date');
+        }
+      } else {
+        setAvailableSlots([]);
+        setError('No available slots for this date');
+      }
     } catch (err) {
-      setError('Failed to load available time slots');
+      console.error('Error fetching available slots:', err);
+      setError(err.response?.data?.message || 'Failed to load available time slots');
+      setAvailableSlots([]);
     } finally {
       setLoadingSlots(false);
     }

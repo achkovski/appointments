@@ -105,6 +105,22 @@ export const getPastAppointments = async (businessId) => {
   return response.data;
 };
 
+/**
+ * Get available time slots for a specific date and service
+ * @param {string} businessSlug - Business slug
+ * @param {string} serviceId - Service ID
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @returns {Promise} - Available slots data
+ */
+export const getAvailableSlots = async (businessSlug, serviceId, date) => {
+  const response = await api.post('/public/available-slots', {
+    businessSlug,
+    serviceId,
+    date,
+  });
+  return response.data;
+};
+
 export default {
   getAppointments,
   getAppointment,
@@ -115,4 +131,5 @@ export default {
   cancelAppointment,
   getUpcomingAppointments,
   getPastAppointments,
+  getAvailableSlots,
 };

@@ -276,10 +276,8 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     // Get existing appointments
     const existingAppointments = await getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId);
 
-    // Determine capacity
-    const capacity = workingHours.capacityOverride
-      || businessData.defaultCapacity
-      || 1;
+    // Determine capacity (use ?? instead of || to allow 0 for unlimited)
+    const capacity = workingHours.capacityOverride ?? businessData.defaultCapacity ?? 1;
 
     const capacityMode = businessData.capacityMode || 'SINGLE';
 
@@ -359,14 +357,14 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
           }
         }
 
-        // Slot is available if under capacity
-        if (overlappingCount < capacity) {
+        // Slot is available if under capacity (capacity = 0 means unlimited)
+        if (capacity === 0 || overlappingCount < capacity) {
           availableSlots.push({
             startTime: slot.start,
             endTime: slot.end,
             available: true,
-            spotsLeft: capacity - overlappingCount,
-            totalCapacity: capacity
+            spotsLeft: capacity === 0 ? 'unlimited' : capacity - overlappingCount,
+            totalCapacity: capacity === 0 ? 'unlimited' : capacity
           });
         }
       }
