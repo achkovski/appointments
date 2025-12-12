@@ -62,7 +62,7 @@ const Appointments = () => {
       setLoading(true);
       setError(null);
       const response = await getAppointments(business.id, {});
-      const appointmentsData = response.appointments || [];
+      const appointmentsData = response.data || response.appointments || [];
       setAppointments(appointmentsData);
     } catch (err) {
       console.error('Error fetching appointments:', err);

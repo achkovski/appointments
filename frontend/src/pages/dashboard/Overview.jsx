@@ -55,10 +55,10 @@ const Overview = () => {
         page: 1,
       });
 
-      const todayCount = todayResponse.appointments?.length || 0;
-      const pendingCount = pendingResponse.appointments?.length || 0;
-      const last30Days = last30DaysResponse.appointments || [];
-      const recent = recentResponse.appointments || [];
+      const todayCount = (todayResponse.data || todayResponse.appointments)?.length || 0;
+      const pendingCount = (pendingResponse.data || pendingResponse.appointments)?.length || 0;
+      const last30Days = last30DaysResponse.data || last30DaysResponse.appointments || [];
+      const recent = recentResponse.data || recentResponse.appointments || [];
 
       // Calculate cancellation rate
       const totalLast30 = last30Days.length;
