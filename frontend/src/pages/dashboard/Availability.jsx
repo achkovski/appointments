@@ -99,8 +99,8 @@ const Availability = () => {
         getSpecialDates(business.id),
       ]);
 
-      setWorkingHours(hoursResponse.availability || []);
-      setSpecialDates(specialResponse.specialDates || []);
+      setWorkingHours(hoursResponse.data || hoursResponse.availability || []);
+      setSpecialDates(specialResponse.data || specialResponse.specialDates || []);
     } catch (err) {
       console.error('Error fetching availability data:', err);
       setError(err.response?.data?.message || 'Failed to load availability data');

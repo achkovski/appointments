@@ -41,7 +41,10 @@ export const getService = async (serviceId) => {
  * @returns {Promise} - Created service
  */
 export const createService = async (businessId, serviceData) => {
-  const response = await api.post(`/services/business/${businessId}`, serviceData);
+  const response = await api.post('/services', {
+    businessId,
+    ...serviceData
+  });
   return response.data;
 };
 
