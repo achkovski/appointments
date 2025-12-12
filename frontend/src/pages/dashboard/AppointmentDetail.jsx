@@ -72,7 +72,7 @@ const AppointmentDetail = () => {
       setLoading(true);
       setError(null);
       const response = await getAppointment(id);
-      const aptData = response.appointment || response;
+      const aptData = response.data || response.appointment || response;
       setAppointment(aptData);
       setNotes(aptData.notes || '');
     } catch (err) {
@@ -105,21 +105,35 @@ const AppointmentDetail = () => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    if (!dateString) return 'N/A';
+    try {
+      // Handle YYYY-MM-DD format
+      const date = new Date(dateString + 'T00:00:00');
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch (err) {
+      return 'Invalid Date';
+    }
   };
 
   const formatTime = (timeString) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    if (!timeString) return 'N/A';
+    try {
+      const date = new Date(`2000-01-01T${timeString}`);
+      if (isNaN(date.getTime())) return 'Invalid Time';
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch (err) {
+      return 'Invalid Time';
+    }
   };
 
   const handleSaveNotes = async () => {

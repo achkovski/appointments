@@ -79,12 +79,16 @@ const Appointments = () => {
     // Apply status filter
     if (activeFilter !== 'all') {
       filtered = filtered.filter((apt) => {
-        const aptDate = new Date(apt.appointmentDate);
+        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
         const statusUpper = apt.status?.toUpperCase();
         switch (activeFilter) {
+          case 'today':
+            return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
           case 'upcoming':
             return aptDate >= today && statusUpper !== 'CANCELLED' && statusUpper !== 'COMPLETED';
           case 'past':
@@ -141,7 +145,9 @@ const Appointments = () => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString + 'T00:00:00');
+    if (isNaN(date.getTime())) return 'Invalid Date';
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -150,7 +156,10 @@ const Appointments = () => {
   };
 
   const formatTime = (timeString) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+    if (!timeString) return 'N/A';
+    const date = new Date(`2000-01-01T${timeString}`);
+    if (isNaN(date.getTime())) return 'Invalid Time';
+    return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
@@ -160,10 +169,23 @@ const Appointments = () => {
   const filterButtons = [
     { key: 'all', label: 'All', count: appointments.length },
     {
+      key: 'today',
+      label: 'Today',
+      count: appointments.filter(apt => {
+        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const statusUpper = apt.status?.toUpperCase();
+        return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
+      }).length
+    },
+    {
       key: 'upcoming',
       label: 'Upcoming',
       count: appointments.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
+        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const statusUpper = apt.status?.toUpperCase();
@@ -175,7 +197,7 @@ const Appointments = () => {
       key: 'past',
       label: 'Past',
       count: appointments.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
+        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const statusUpper = apt.status?.toUpperCase();
