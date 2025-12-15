@@ -41,14 +41,15 @@ const Appointments = () => {
   const { business, loading: businessLoading } = useBusiness();
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
   const [showTodayOnly, setShowTodayOnly] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const itemsPerPage = 10;
+  const itemsPerPage = 25;
 
   // Fetch appointments when business is loaded
   useEffect(() => {
@@ -78,44 +79,53 @@ const Appointments = () => {
   useEffect(() => {
     let filtered = appointments;
 
-    // Apply Today Only filter first
-    if (showTodayOnly) {
+    // Apply selected date filter first (if set)
+    if (selectedDate) {
       filtered = filtered.filter((apt) => {
         const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const statusUpper = apt.status?.toUpperCase();
-        return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
+        const selected = new Date(selectedDate + 'T00:00:00');
+        return aptDate.getTime() === selected.getTime();
       });
-    }
+    } else {
+      // Apply Today Only filter if no specific date selected
+      if (showTodayOnly) {
+        filtered = filtered.filter((apt) => {
+          const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const statusUpper = apt.status?.toUpperCase();
+          return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
+        });
+      }
 
-    // Apply status filter
-    if (activeFilter !== 'all') {
-      filtered = filtered.filter((apt) => {
-        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+      // Apply status filter
+      if (activeFilter !== 'all') {
+        filtered = filtered.filter((apt) => {
+          const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
 
-        const statusUpper = apt.status?.toUpperCase();
-        switch (activeFilter) {
-          case 'today':
-            return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
-          case 'upcoming':
-            return aptDate >= today && statusUpper !== 'CANCELLED' && statusUpper !== 'COMPLETED';
-          case 'past':
-            return aptDate < today || statusUpper === 'COMPLETED';
-          case 'cancelled':
-            return statusUpper === 'CANCELLED';
-          case 'pending':
-            return statusUpper === 'PENDING';
-          default:
-            return true;
-        }
-      });
+          const statusUpper = apt.status?.toUpperCase();
+          switch (activeFilter) {
+            case 'today':
+              return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
+            case 'upcoming':
+              return aptDate >= today && statusUpper !== 'CANCELLED' && statusUpper !== 'COMPLETED';
+            case 'past':
+              return aptDate < today || statusUpper === 'COMPLETED';
+            case 'cancelled':
+              return statusUpper === 'CANCELLED';
+            case 'pending':
+              return statusUpper === 'PENDING';
+            default:
+              return true;
+          }
+        });
+      }
     }
 
     // Apply search filter
@@ -130,7 +140,7 @@ const Appointments = () => {
 
     setFilteredAppointments(filtered);
     setCurrentPage(1);
-  }, [activeFilter, searchQuery, appointments, showTodayOnly]);
+  }, [activeFilter, searchQuery, appointments, showTodayOnly, selectedDate]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
@@ -279,14 +289,38 @@ const Appointments = () => {
           </div>
         </div>
 
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, email, or service..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex flex-col md:flex-row gap-4 w-full">
+          <div className="relative flex-1 md:max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or service..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="date-selector" className="text-sm font-medium whitespace-nowrap">
+              Select Date:
+            </label>
+            <Input
+              id="date-selector"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-[180px]"
+            />
+            {selectedDate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedDate('')}
+                className="h-10"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -318,6 +352,7 @@ const Appointments = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[60px]">#</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Service</TableHead>
                     <TableHead>Date & Time</TableHead>
@@ -327,12 +362,15 @@ const Appointments = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentAppointments.map((appointment) => (
+                  {currentAppointments.map((appointment, index) => (
                     <TableRow
                       key={appointment.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => navigate(`/dashboard/appointments/${appointment.id}`)}
                     >
+                      <TableCell className="font-medium text-muted-foreground">
+                        {startIndex + index + 1}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -404,12 +442,11 @@ const Appointments = () => {
               </Table>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {startIndex + 1} to {Math.min(endIndex, filteredAppointments.length)} of{' '}
-                    {filteredAppointments.length} appointments
-                  </p>
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages} • Showing {currentAppointments.length} of {filteredAppointments.length} items
+                </p>
+                {totalPages > 1 && (
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -441,8 +478,8 @@ const Appointments = () => {
                       Next
                     </Button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </>
           )}
         </CardContent>
