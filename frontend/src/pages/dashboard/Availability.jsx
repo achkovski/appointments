@@ -204,7 +204,20 @@ const Availability = () => {
 
     try {
       setActionLoading(true);
-      await createSpecialDate(business.id, specialDateForm);
+
+      // Only include time fields if the date is available
+      const payload = {
+        date: specialDateForm.date,
+        isAvailable: specialDateForm.isAvailable,
+        reason: specialDateForm.reason,
+      };
+
+      if (specialDateForm.isAvailable) {
+        payload.startTime = specialDateForm.startTime;
+        payload.endTime = specialDateForm.endTime;
+      }
+
+      await createSpecialDate(business.id, payload);
       await fetchData();
       setShowAddSpecialDateDialog(false);
       resetSpecialDateForm();
@@ -222,7 +235,20 @@ const Availability = () => {
 
     try {
       setActionLoading(true);
-      await updateSpecialDate(business.id, selectedItem.id, specialDateForm);
+
+      // Only include time fields if the date is available
+      const payload = {
+        date: specialDateForm.date,
+        isAvailable: specialDateForm.isAvailable,
+        reason: specialDateForm.reason,
+      };
+
+      if (specialDateForm.isAvailable) {
+        payload.startTime = specialDateForm.startTime;
+        payload.endTime = specialDateForm.endTime;
+      }
+
+      await updateSpecialDate(business.id, selectedItem.id, payload);
       await fetchData();
       setShowEditSpecialDateDialog(false);
       setSelectedItem(null);
