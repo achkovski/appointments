@@ -41,6 +41,7 @@ import {
   getAppointment,
   updateAppointment,
   updateAppointmentStatus,
+  updateAppointmentNotes,
   confirmAppointment as confirmAppointmentService,
   cancelAppointment as cancelAppointmentService,
 } from '../../services/appointmentsService';
@@ -125,7 +126,7 @@ const AppointmentDetail = () => {
   const handleSaveNotes = async () => {
     try {
       setActionLoading(true);
-      await updateAppointment(id, { notes });
+      await updateAppointmentNotes(id, notes);
       setAppointment({ ...appointment, notes });
       setIsEditingNotes(false);
       toast({

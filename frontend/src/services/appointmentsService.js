@@ -63,6 +63,17 @@ export const updateAppointmentStatus = async (appointmentId, status) => {
 };
 
 /**
+ * Update appointment notes
+ * @param {string} appointmentId - Appointment ID
+ * @param {string} notes - Notes text
+ * @returns {Promise} - Updated appointment
+ */
+export const updateAppointmentNotes = async (appointmentId, notes) => {
+  const response = await api.put(`/appointments/${appointmentId}/notes`, { notes });
+  return response.data;
+};
+
+/**
  * Confirm appointment
  * @param {string} appointmentId - Appointment ID
  * @returns {Promise} - Confirmed appointment
@@ -127,6 +138,7 @@ export default {
   createAppointment,
   updateAppointment,
   updateAppointmentStatus,
+  updateAppointmentNotes,
   confirmAppointment,
   cancelAppointment,
   getUpcomingAppointments,
