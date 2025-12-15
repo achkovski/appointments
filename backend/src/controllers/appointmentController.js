@@ -95,7 +95,8 @@ export const createGuestAppointment = async (req, res) => {
     const serviceData = service[0];
 
     // Calculate available slots for the requested date
-    const slotsData = await calculateAvailableSlots(businessData.id, serviceId, appointmentDate);
+    // Allow past slots for business users (they can add appointments made by phone)
+    const slotsData = await calculateAvailableSlots(businessData.id, serviceId, appointmentDate, null, true);
 
     if (!slotsData.available) {
       return res.status(400).json({
@@ -176,7 +177,10 @@ export const createGuestAppointment = async (req, res) => {
         startTime,
         endTime,
         requiresConfirmation: businessData.requireEmailConfirmation,
-        confirmationToken: emailConfirmationToken
+        confirmationToken: emailConfirmationToken,
+        businessAddress: businessData.address,
+        businessPhone: businessData.phone,
+        businessEmail: businessData.email
       });
     } catch (emailError) {
       console.error('Client confirmation email failed:', emailError);
@@ -504,7 +508,8 @@ export const createManualAppointment = async (req, res) => {
     const serviceData = service[0];
 
     // Calculate available slots for the requested date
-    const slotsData = await calculateAvailableSlots(businessId, serviceId, appointmentDate);
+    // Allow past slots for business users (they can add appointments made by phone)
+    const slotsData = await calculateAvailableSlots(businessId, serviceId, appointmentDate, null, true);
 
     if (!slotsData.available) {
       return res.status(400).json({
@@ -568,7 +573,10 @@ export const createManualAppointment = async (req, res) => {
         startTime,
         endTime,
         requiresConfirmation: false,
-        confirmationToken: null
+        confirmationToken: null,
+        businessAddress: businessData.address,
+        businessPhone: businessData.phone,
+        businessEmail: businessData.email
       });
     } catch (emailError) {
       console.error('Email sending failed:', emailError);
@@ -883,11 +891,13 @@ export const rescheduleAppointment = async (req, res) => {
     const serviceData = service[0];
 
     // Calculate available slots for the new date
+    // Allow past slots for business users (they can reschedule to past times if needed)
     const slotsData = await calculateAvailableSlots(
       apt.businessId,
       targetServiceId,
       appointmentDate,
-      appointmentId // Exclude current appointment from availability check
+      appointmentId, // Exclude current appointment from availability check
+      true // allowPastSlots
     );
 
     if (!slotsData.available) {
@@ -1043,7 +1053,10 @@ export const confirmAppointment = async (req, res) => {
           startTime: apt.startTime,
           endTime: apt.endTime,
           requiresConfirmation: false,
-          confirmationToken: null
+          confirmationToken: null,
+          businessAddress: business.address,
+          businessPhone: business.phone,
+          businessEmail: business.email
         });
       }
     } catch (emailError) {

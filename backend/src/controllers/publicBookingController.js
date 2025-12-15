@@ -143,8 +143,8 @@ export const getAvailableSlots = async (req, res) => {
       });
     }
 
-    // Calculate available slots
-    const slotsData = await calculateAvailableSlots(businessId, serviceId, date);
+    // Calculate available slots (allowPastSlots=false for public bookings)
+    const slotsData = await calculateAvailableSlots(businessId, serviceId, date, null, false);
 
     res.json({
       success: true,
@@ -245,8 +245,8 @@ export const getAvailableSlotsRange = async (req, res) => {
       });
     }
 
-    // Calculate available slots for range
-    const slotsData = await calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate);
+    // Calculate available slots for range (allowPastSlots=false for public bookings)
+    const slotsData = await calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate, false);
 
     res.json({
       success: true,

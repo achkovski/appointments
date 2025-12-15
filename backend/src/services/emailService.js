@@ -239,6 +239,9 @@ export const sendPasswordResetEmail = async (email, token) => {
  * @param {string} params.endTime - End time
  * @param {boolean} params.requiresConfirmation - Whether email confirmation is required
  * @param {string} params.confirmationToken - Confirmation token (if required)
+ * @param {string} params.businessAddress - Business address (optional)
+ * @param {string} params.businessPhone - Business phone (optional)
+ * @param {string} params.businessEmail - Business email (optional)
  * @returns {Promise<void>}
  */
 export const sendAppointmentConfirmationEmail = async (params) => {
@@ -251,7 +254,10 @@ export const sendAppointmentConfirmationEmail = async (params) => {
     startTime,
     endTime,
     requiresConfirmation,
-    confirmationToken
+    confirmationToken,
+    businessAddress,
+    businessPhone,
+    businessEmail
   } = params;
 
   const confirmationUrl = requiresConfirmation
@@ -295,6 +301,14 @@ export const sendAppointmentConfirmationEmail = async (params) => {
                 <p><strong>Service:</strong> ${serviceName}</p>
                 <p><strong>Date:</strong> ${appointmentDate}</p>
                 <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
+                ${businessAddress || businessPhone || businessEmail
+                  ? `<hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+                     <h4 style="margin-bottom: 10px;">Business Contact Information:</h4>`
+                  : ''
+                }
+                ${businessAddress ? `<p>📍 <strong>Address:</strong> ${businessAddress}</p>` : ''}
+                ${businessPhone ? `<p>📞 <strong>Phone:</strong> ${businessPhone}</p>` : ''}
+                ${businessEmail ? `<p>✉️  <strong>Email:</strong> ${businessEmail}</p>` : ''}
               </div>
               ${requiresConfirmation
                 ? `<a href="${confirmationUrl}" class="button">Confirm Appointment</a>
@@ -326,6 +340,10 @@ export const sendAppointmentConfirmationEmail = async (params) => {
       Service: ${serviceName}
       Date: ${appointmentDate}
       Time: ${startTime} - ${endTime}
+      ${businessAddress || businessPhone || businessEmail ? '\n      Business Contact Information:' : ''}
+      ${businessAddress ? `Address: ${businessAddress}` : ''}
+      ${businessPhone ? `Phone: ${businessPhone}` : ''}
+      ${businessEmail ? `Email: ${businessEmail}` : ''}
 
       ${requiresConfirmation
         ? `\nConfirmation Link: ${confirmationUrl}\n\nImportant: Your appointment will only be confirmed after you click the confirmation link.`

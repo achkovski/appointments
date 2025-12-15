@@ -470,13 +470,22 @@ const BookingPage = () => {
                     {availableSlots.map((slot) => (
                       <Button
                         key={slot.startTime}
-                        variant="outline"
-                        className="h-auto py-3"
-                        onClick={() => handleTimeSlotSelect(slot)}
+                        variant={slot.available ? "outline" : "ghost"}
+                        className={`h-auto py-3 ${!slot.available ? 'opacity-40 cursor-not-allowed' : ''}`}
+                        onClick={() => slot.available && handleTimeSlotSelect(slot)}
+                        disabled={!slot.available}
                       >
                         <div className="text-center">
                           <div className="font-semibold">{slot.startTime}</div>
                           <div className="text-xs text-gray-600">to {slot.endTime}</div>
+                          {!slot.available && (
+                            <div className="text-xs text-red-600 mt-1">Booked</div>
+                          )}
+                          {slot.available && slot.spotsLeft && slot.spotsLeft !== 'unlimited' && (
+                            <div className="text-xs text-green-600 mt-1">
+                              {slot.spotsLeft} spot{slot.spotsLeft !== 1 ? 's' : ''} left
+                            </div>
+                          )}
                         </div>
                       </Button>
                     ))}

@@ -121,10 +121,10 @@ const Appointments = () => {
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter((apt) =>
-        apt.clientFirstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        apt.clientLastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        apt.clientEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        apt.serviceName.toLowerCase().includes(searchQuery.toLowerCase())
+        (apt.clientFirstName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (apt.clientLastName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (apt.clientEmail?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (apt.serviceName?.toLowerCase() || '').includes(searchQuery.toLowerCase())
       );
     }
 

@@ -192,9 +192,10 @@ export async function getExistingAppointments(businessId, serviceId, dateStr, ex
  * @param {string} serviceId - Service ID
  * @param {string} dateStr - Date in YYYY-MM-DD format
  * @param {string} excludeAppointmentId - Optional appointment ID to exclude (for rescheduling)
+ * @param {boolean} allowPastSlots - If true, includes past time slots (for admin/business users)
  * @returns {Promise<Object>} Object with available slots and metadata
  */
-export async function calculateAvailableSlots(businessId, serviceId, dateStr, excludeAppointmentId = null) {
+export async function calculateAvailableSlots(businessId, serviceId, dateStr, excludeAppointmentId = null, allowPastSlots = false) {
   try {
     // Validate inputs
     if (!businessId || !serviceId || !dateStr) {
@@ -208,12 +209,14 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     }
 
     // Check if date is in the past (compare date strings to avoid timezone issues)
+    // Only block past dates for public bookings (clients)
+    // Business users (allowPastSlots=true) can create appointments for past dates
     const today = new Date();
     const todayStr = today.getFullYear() + '-' +
       String(today.getMonth() + 1).padStart(2, '0') + '-' +
       String(today.getDate()).padStart(2, '0');
 
-    if (dateStr < todayStr) {
+    if (!allowPastSlots && dateStr < todayStr) {
       return {
         date: dateStr,
         available: false,
@@ -282,12 +285,31 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
 
     const capacityMode = businessData.capacityMode || 'SINGLE';
 
-    // Calculate slot interval (use business default or service duration)
-    const slotInterval = businessData.defaultSlotInterval || serviceDuration;
+    // Calculate slot interval
+    // For proper slot generation, use the configured interval from business settings
+    const configuredInterval = businessData.defaultSlotInterval || 15;
+
+    // Slot interval logic depends on capacity mode:
+    // - SINGLE mode: Use max of (configured interval, service duration) to avoid overlaps
+    // - MULTIPLE mode: Use configured interval to allow overlapping bookings
+    let slotInterval;
+    if (capacityMode === 'SINGLE') {
+      // For single appointments, slots should not overlap
+      // If service is 60 min and interval is 15 min, use 60 min intervals
+      slotInterval = Math.max(configuredInterval, serviceDuration);
+    } else {
+      // For multiple concurrent appointments, keep configured interval
+      // but ensure service can fit within working hours
+      slotInterval = configuredInterval;
+    }
 
     // Convert times to minutes
     const dayStart = timeToMinutes(workingHours.startTime);
     const dayEnd = timeToMinutes(workingHours.endTime);
+
+    // Check if this is today and get current time for filtering past slots
+    const isToday = dateStr === todayStr;
+    const currentMinutes = isToday ? (today.getHours() * 60 + today.getMinutes()) : 0;
 
     // Generate all possible slots based on interval
     const possibleSlots = [];
@@ -296,6 +318,14 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     while (currentTime + serviceDuration <= dayEnd) {
       const slotStart = currentTime;
       const slotEnd = currentTime + serviceDuration;
+
+      // For clients (allowPastSlots=false), skip past time slots for today
+      // For admins (allowPastSlots=true), include all time slots
+      const isPastSlot = isToday && slotEnd <= currentMinutes;
+      if (!allowPastSlots && isPastSlot) {
+        currentTime += slotInterval;
+        continue;
+      }
 
       possibleSlots.push({
         start: minutesToTime(slotStart),
@@ -320,8 +350,9 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       return true;
     });
 
-    // Filter based on capacity and existing appointments
-    const availableSlots = [];
+    // Check availability for all slots and mark them as available or unavailable
+    // This allows the frontend to show all slots but disable the unavailable ones
+    const allSlots = [];
 
     for (const slot of slotsAfterBreaks) {
       if (capacityMode === 'SINGLE') {
@@ -338,13 +369,11 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
           }
         }
 
-        if (!hasConflict) {
-          availableSlots.push({
-            startTime: slot.start,
-            endTime: slot.end,
-            available: true
-          });
-        }
+        allSlots.push({
+          startTime: slot.start,
+          endTime: slot.end,
+          available: !hasConflict
+        });
       } else {
         // MULTIPLE mode: count overlapping appointments
         let overlappingCount = 0;
@@ -359,17 +388,21 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
         }
 
         // Slot is available if under capacity (capacity = 0 means unlimited)
-        if (capacity === 0 || overlappingCount < capacity) {
-          availableSlots.push({
-            startTime: slot.start,
-            endTime: slot.end,
-            available: true,
-            spotsLeft: capacity === 0 ? 'unlimited' : capacity - overlappingCount,
-            totalCapacity: capacity === 0 ? 'unlimited' : capacity
-          });
-        }
+        const isAvailable = capacity === 0 || overlappingCount < capacity;
+        const spotsLeft = capacity === 0 ? 'unlimited' : Math.max(0, capacity - overlappingCount);
+
+        allSlots.push({
+          startTime: slot.start,
+          endTime: slot.end,
+          available: isAvailable,
+          spotsLeft,
+          totalCapacity: capacity === 0 ? 'unlimited' : capacity
+        });
       }
     }
+
+    // Separate available and unavailable slots
+    const availableSlots = allSlots.filter(slot => slot.available);
 
     return {
       date: dateStr,
@@ -386,8 +419,10 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       capacityMode,
       capacity,
       breaks: breakPeriods,
-      slots: availableSlots,
-      totalSlots: availableSlots.length
+      slots: allSlots, // Return all slots with availability status
+      availableSlots, // Separate list of only available slots for backward compatibility
+      totalSlots: allSlots.length,
+      availableSlotsCount: availableSlots.length
     };
 
   } catch (error) {
@@ -403,9 +438,10 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
  * @param {string} serviceId - Service ID
  * @param {string} startDate - Start date in YYYY-MM-DD format
  * @param {string} endDate - End date in YYYY-MM-DD format
+ * @param {boolean} allowPastSlots - If true, includes past time slots (for admin/business users)
  * @returns {Promise<Array>} Array of date objects with availability
  */
-export async function calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate) {
+export async function calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate, allowPastSlots = false) {
   const results = [];
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -420,7 +456,7 @@ export async function calculateAvailableSlotsForRange(businessId, serviceId, sta
 
   while (currentDate <= end) {
     const dateStr = currentDate.toISOString().split('T')[0];
-    const slots = await calculateAvailableSlots(businessId, serviceId, dateStr);
+    const slots = await calculateAvailableSlots(businessId, serviceId, dateStr, null, allowPastSlots);
     results.push(slots);
 
     currentDate.setDate(currentDate.getDate() + 1);
