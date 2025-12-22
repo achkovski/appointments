@@ -75,6 +75,58 @@ export const createGuestAppointment = async (req, res) => {
     }
 
     const businessData = business[0];
+    const settings = businessData.settings || {};
+
+    // Validate booking settings
+    const now = new Date();
+    const appointmentDateTime = new Date(`${appointmentDate}T${startTime}`);
+
+    // Check minimum booking notice (in hours)
+    const minBookingNotice = settings.minBookingNotice ?? 2; // default 2 hours
+    if (minBookingNotice > 0) {
+      const minNoticeMs = minBookingNotice * 60 * 60 * 1000;
+      const timeDiff = appointmentDateTime.getTime() - now.getTime();
+      if (timeDiff < minNoticeMs) {
+        return res.status(400).json({
+          success: false,
+          message: `Appointments must be booked at least ${minBookingNotice} hour${minBookingNotice > 1 ? 's' : ''} in advance`
+        });
+      }
+    }
+
+    // Check maximum advance booking (in days)
+    const maxAdvanceBooking = settings.maxAdvanceBooking ?? 30; // default 30 days
+    if (maxAdvanceBooking > 0) {
+      const maxAdvanceMs = maxAdvanceBooking * 24 * 60 * 60 * 1000;
+      const timeDiff = appointmentDateTime.getTime() - now.getTime();
+      if (timeDiff > maxAdvanceMs) {
+        return res.status(400).json({
+          success: false,
+          message: `Appointments cannot be booked more than ${maxAdvanceBooking} days in advance`
+        });
+      }
+    }
+
+    // Check max appointments per day (0 = unlimited)
+    const maxAppointmentsPerDay = settings.maxAppointmentsPerDay ?? 0;
+    if (maxAppointmentsPerDay > 0) {
+      const existingAppointmentsForDay = await db.select().from(appointments)
+        .where(and(
+          eq(appointments.businessId, businessData.id),
+          eq(appointments.appointmentDate, appointmentDate)
+        ));
+
+      const activeAppointments = existingAppointmentsForDay.filter(
+        apt => apt.status !== 'CANCELLED' && apt.status !== 'NO_SHOW'
+      );
+
+      if (activeAppointments.length >= maxAppointmentsPerDay) {
+        return res.status(400).json({
+          success: false,
+          message: `Maximum appointments for ${appointmentDate} has been reached. Please select another date.`
+        });
+      }
+    }
 
     // Get service and verify it belongs to this business
     const service = await db.select().from(services)
@@ -124,19 +176,29 @@ export const createGuestAppointment = async (req, res) => {
     const endMins = endMinutes % 60;
     const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 
-    // Determine initial status based on requireEmailConfirmation
-    // If email confirmation is NOT required, appointments are auto-confirmed
-    // If email confirmation IS required, appointments start as PENDING (need email + manual approval)
+    // Get booking settings from JSON settings field
+    const requireEmailConfirmation = settings.requireEmailConfirmation ?? businessData.requireEmailConfirmation ?? false;
+    const autoConfirm = settings.autoConfirm ?? businessData.autoConfirm ?? true;
+
+    // Determine initial status based on requireEmailConfirmation and autoConfirm
+    // Flow:
+    // 1. If requireEmailConfirmation is TRUE → client must verify email first, status = PENDING
+    // 2. After email verification (or if not required):
+    //    - If autoConfirm is TRUE → status = CONFIRMED
+    //    - If autoConfirm is FALSE → status = PENDING (needs manual business approval)
     let initialStatus;
     let emailConfirmationToken = null;
 
-    if (!businessData.requireEmailConfirmation) {
-      // No email confirmation required = instant booking (auto-confirmed)
-      initialStatus = 'CONFIRMED';
-    } else {
-      // Email confirmation required = needs verification then manual approval
+    if (requireEmailConfirmation) {
+      // Email confirmation required = needs verification first
       initialStatus = 'PENDING';
       emailConfirmationToken = crypto.randomBytes(32).toString('hex');
+    } else if (autoConfirm) {
+      // No email confirmation required + auto-confirm enabled = instant confirmation
+      initialStatus = 'CONFIRMED';
+    } else {
+      // No email confirmation required but auto-confirm disabled = needs manual approval
+      initialStatus = 'PENDING';
     }
 
     // Create appointment
@@ -153,7 +215,7 @@ export const createGuestAppointment = async (req, res) => {
       startTime,
       endTime,
       status: initialStatus,
-      isEmailConfirmed: !businessData.requireEmailConfirmation,
+      isEmailConfirmed: !requireEmailConfirmation,
       emailConfirmationToken: emailConfirmationToken
         ? crypto.createHash('sha256').update(emailConfirmationToken).digest('hex')
         : null,
@@ -176,7 +238,7 @@ export const createGuestAppointment = async (req, res) => {
         appointmentDate,
         startTime,
         endTime,
-        requiresConfirmation: businessData.requireEmailConfirmation,
+        requiresConfirmation: requireEmailConfirmation,
         confirmationToken: emailConfirmationToken,
         businessAddress: businessData.address,
         businessPhone: businessData.phone,
@@ -211,12 +273,20 @@ export const createGuestAppointment = async (req, res) => {
       // Don't fail the booking if email fails
     }
 
+    // Prepare response message based on status
+    let responseMessage;
+    if (requireEmailConfirmation) {
+      responseMessage = 'Appointment created! Please check your email to confirm.';
+    } else if (autoConfirm) {
+      responseMessage = 'Appointment confirmed!';
+    } else {
+      responseMessage = 'Appointment created! Awaiting business confirmation.';
+    }
+
     // Prepare response
     const response = {
       success: true,
-      message: businessData.requireEmailConfirmation
-        ? 'Appointment created! Please check your email to confirm.'
-        : 'Appointment confirmed!',
+      message: responseMessage,
       appointment: {
         id: newAppointment.id,
         businessName: businessData.businessName,
@@ -225,7 +295,7 @@ export const createGuestAppointment = async (req, res) => {
         startTime,
         endTime,
         status: newAppointment.status,
-        requiresEmailConfirmation: businessData.requireEmailConfirmation
+        requiresEmailConfirmation: requireEmailConfirmation
       }
     };
 
@@ -295,10 +365,16 @@ export const confirmAppointmentEmail = async (req, res) => {
     }
 
     const businessData = business[0];
+    const settings = businessData.settings || {};
 
-    // After email confirmation, appointment still needs manual approval (PENDING)
-    // Business owner must click "Confirm Appointment" to change status to CONFIRMED
-    const newStatus = 'PENDING';
+    // Check autoConfirm setting from settings JSON (fallback to column, then default true)
+    const autoConfirm = settings.autoConfirm ?? businessData.autoConfirm ?? true;
+
+    // After email confirmation:
+    // - If autoConfirm is TRUE → status becomes CONFIRMED
+    // - If autoConfirm is FALSE → status stays PENDING (needs manual business approval)
+    const newStatus = autoConfirm ? 'CONFIRMED' : 'PENDING';
+    const requiresBusinessApproval = !autoConfirm;
 
     // Update appointment status
     await db.update(appointments)
@@ -312,10 +388,12 @@ export const confirmAppointmentEmail = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Email verified! Your appointment is pending business confirmation.',
+      message: autoConfirm
+        ? 'Email verified! Your appointment is now confirmed.'
+        : 'Email verified! Your appointment is pending business confirmation.',
       data: {
         status: newStatus,
-        requiresBusinessApproval: true
+        requiresBusinessApproval
       }
     });
 
@@ -1082,6 +1160,167 @@ export const confirmAppointment = async (req, res) => {
   }
 };
 
+/**
+ * Cancel appointment by client (public endpoint)
+ * POST /api/public/cancel-appointment
+ * Body: { appointmentId, email, cancellationReason }
+ *
+ * Clients can cancel their own appointments if:
+ * - The email matches the appointment
+ * - The cancellation is within the allowed cancellation notice period
+ */
+export const cancelAppointmentByClient = async (req, res) => {
+  try {
+    const { appointmentId, email, cancellationReason } = req.body;
+
+    if (!appointmentId || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Appointment ID and email are required'
+      });
+    }
+
+    // Get appointment
+    const appointment = await db.select().from(appointments)
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+
+    if (!appointment.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    const apt = appointment[0];
+
+    // Verify email matches
+    if (apt.clientEmail.toLowerCase() !== email.toLowerCase().trim()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Email does not match appointment record'
+      });
+    }
+
+    // Check if already cancelled
+    if (apt.status === 'CANCELLED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Appointment is already cancelled'
+      });
+    }
+
+    // Check if appointment is in the past
+    const appointmentDateTime = new Date(`${apt.appointmentDate}T${apt.startTime}`);
+    const now = new Date();
+    if (appointmentDateTime < now) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel past appointments'
+      });
+    }
+
+    // Get business settings for cancellation notice period
+    const business = await db.select().from(businesses)
+      .where(eq(businesses.id, apt.businessId))
+      .limit(1);
+
+    if (!business.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found'
+      });
+    }
+
+    const businessData = business[0];
+    const settings = businessData.settings || {};
+    const cancellationNotice = settings.cancellationNotice ?? 24; // default 24 hours
+
+    // Check cancellation notice period
+    if (cancellationNotice > 0) {
+      const cancellationNoticeMs = cancellationNotice * 60 * 60 * 1000;
+      const timeDiff = appointmentDateTime.getTime() - now.getTime();
+
+      if (timeDiff < cancellationNoticeMs) {
+        const hoursRemaining = Math.floor(timeDiff / (60 * 60 * 1000));
+        return res.status(400).json({
+          success: false,
+          message: `Appointments must be cancelled at least ${cancellationNotice} hours in advance. Your appointment is in ${hoursRemaining} hours.`
+        });
+      }
+    }
+
+    // Cancel the appointment
+    await db.update(appointments)
+      .set({
+        status: 'CANCELLED',
+        cancellationReason: cancellationReason || 'Cancelled by client',
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(appointments.id, appointmentId));
+
+    // Send cancellation confirmation email to client
+    try {
+      const service = await db.select().from(services)
+        .where(eq(services.id, apt.serviceId))
+        .limit(1);
+
+      if (service.length) {
+        await sendCancellationEmail({
+          to: apt.clientEmail,
+          clientName: `${apt.clientFirstName} ${apt.clientLastName}`,
+          businessName: businessData.businessName,
+          serviceName: service[0].name,
+          appointmentDate: apt.appointmentDate,
+          startTime: apt.startTime,
+          cancellationReason: cancellationReason || 'Cancelled by client',
+          businessPhone: businessData.phone,
+          businessEmail: businessData.email
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send cancellation email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    // Notify business owner
+    try {
+      const owner = await db.select().from(users)
+        .where(eq(users.id, businessData.ownerId))
+        .limit(1);
+
+      if (owner.length && owner[0].email) {
+        await sendBusinessAlertEmail({
+          to: owner[0].email,
+          businessName: businessData.businessName,
+          clientName: `${apt.clientFirstName} ${apt.clientLastName}`,
+          clientPhone: apt.clientPhone,
+          serviceName: 'Appointment Cancelled',
+          appointmentDate: apt.appointmentDate,
+          startTime: apt.startTime,
+          endTime: apt.endTime,
+          isCancellation: true
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send business alert email:', emailError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Appointment cancelled successfully'
+    });
+
+  } catch (error) {
+    console.error('Cancel appointment by client error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   createGuestAppointment,
   confirmAppointmentEmail,
@@ -1091,5 +1330,6 @@ export default {
   updateAppointmentStatus,
   updateAppointmentNotes,
   rescheduleAppointment,
-  confirmAppointment
+  confirmAppointment,
+  cancelAppointmentByClient
 };

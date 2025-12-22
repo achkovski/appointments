@@ -6,7 +6,8 @@ import {
 } from '../controllers/publicBookingController.js';
 import {
   createGuestAppointment,
-  confirmAppointmentEmail
+  confirmAppointmentEmail,
+  cancelAppointmentByClient
 } from '../controllers/appointmentController.js';
 
 const router = express.Router();
@@ -52,5 +53,13 @@ router.post('/book', createGuestAppointment);
  * @access  Public
  */
 router.post('/confirm-appointment', confirmAppointmentEmail);
+
+/**
+ * @route   POST /api/public/cancel-appointment
+ * @desc    Cancel appointment by client (respects cancellation notice period)
+ * @access  Public
+ * @body    { appointmentId, email, cancellationReason }
+ */
+router.post('/cancel-appointment', cancelAppointmentByClient);
 
 export default router;

@@ -193,9 +193,10 @@ export async function getExistingAppointments(businessId, serviceId, dateStr, ex
  * @param {string} dateStr - Date in YYYY-MM-DD format
  * @param {string} excludeAppointmentId - Optional appointment ID to exclude (for rescheduling)
  * @param {boolean} allowPastSlots - If true, includes past time slots (for admin/business users)
+ * @param {Object} options - Additional options (e.g., bufferTime override)
  * @returns {Promise<Object>} Object with available slots and metadata
  */
-export async function calculateAvailableSlots(businessId, serviceId, dateStr, excludeAppointmentId = null, allowPastSlots = false) {
+export async function calculateAvailableSlots(businessId, serviceId, dateStr, excludeAppointmentId = null, allowPastSlots = false, options = {}) {
   try {
     // Validate inputs
     if (!businessId || !serviceId || !dateStr) {
@@ -235,6 +236,10 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     }
 
     const businessData = business[0];
+    const settings = businessData.settings || {};
+
+    // Get buffer time from settings (in minutes, default 0)
+    const bufferTime = options.bufferTime ?? settings.bufferTime ?? 0;
 
     // Get service details
     const service = await db.select().from(services)
@@ -357,13 +362,18 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     for (const slot of slotsAfterBreaks) {
       if (capacityMode === 'SINGLE') {
         // In SINGLE mode, slot is available if no appointments overlap
+        // Buffer time is added around existing appointments
         let hasConflict = false;
 
         for (const apt of existingAppointments) {
           const aptStart = timeToMinutes(apt.start);
           const aptEnd = timeToMinutes(apt.end);
 
-          if (timeRangesOverlap(slot.startMinutes, slot.endMinutes, aptStart, aptEnd)) {
+          // Apply buffer time: expand the appointment window by buffer minutes on each side
+          const aptStartWithBuffer = aptStart - bufferTime;
+          const aptEndWithBuffer = aptEnd + bufferTime;
+
+          if (timeRangesOverlap(slot.startMinutes, slot.endMinutes, aptStartWithBuffer, aptEndWithBuffer)) {
             hasConflict = true;
             break;
           }
@@ -375,14 +385,18 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
           available: !hasConflict
         });
       } else {
-        // MULTIPLE mode: count overlapping appointments
+        // MULTIPLE mode: count overlapping appointments (with buffer)
         let overlappingCount = 0;
 
         for (const apt of existingAppointments) {
           const aptStart = timeToMinutes(apt.start);
           const aptEnd = timeToMinutes(apt.end);
 
-          if (timeRangesOverlap(slot.startMinutes, slot.endMinutes, aptStart, aptEnd)) {
+          // Apply buffer time for multiple mode as well
+          const aptStartWithBuffer = aptStart - bufferTime;
+          const aptEndWithBuffer = aptEnd + bufferTime;
+
+          if (timeRangesOverlap(slot.startMinutes, slot.endMinutes, aptStartWithBuffer, aptEndWithBuffer)) {
             overlappingCount++;
           }
         }
@@ -418,6 +432,7 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       },
       capacityMode,
       capacity,
+      bufferTime,
       breaks: breakPeriods,
       slots: allSlots, // Return all slots with availability status
       availableSlots, // Separate list of only available slots for backward compatibility

@@ -74,10 +74,27 @@ export const confirmAppointment = async (token) => {
   return response.data;
 };
 
+/**
+ * Cancel appointment by client
+ * @param {string} appointmentId - Appointment ID
+ * @param {string} email - Client email (for verification)
+ * @param {string} cancellationReason - Optional reason for cancellation
+ * @returns {Promise} Cancellation result
+ */
+export const cancelAppointment = async (appointmentId, email, cancellationReason = '') => {
+  const response = await publicApi.post('/cancel-appointment', {
+    appointmentId,
+    email,
+    cancellationReason,
+  });
+  return response.data;
+};
+
 export default {
   getBusinessBySlug,
   getAvailableSlots,
   getAvailableSlotsRange,
   createBooking,
   confirmAppointment,
+  cancelAppointment,
 };
