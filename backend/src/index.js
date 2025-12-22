@@ -7,6 +7,7 @@ import serviceRoutes from './routes/serviceRoutes.js';
 import availabilityRoutes from './routes/availabilityRoutes.js';
 import publicBookingRoutes from './routes/publicBookingRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 import { startReminderScheduler } from './services/reminderScheduler.js';
 
 dotenv.config();
@@ -42,6 +43,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api', availabilityRoutes);
 app.use('/api/public', publicBookingRoutes);
 app.use('/api', appointmentRoutes);
+app.use('/api', analyticsRoutes);
 
 // 404 handler
 app.use((req, res) => {

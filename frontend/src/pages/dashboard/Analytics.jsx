@@ -1,102 +1,583 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { useBusiness } from '../../context/BusinessContext';
+import {
+  getAnalyticsOverview,
+  getBookingTrends,
+  getPopularDays,
+  getPopularTimeSlots,
+  getServicePerformance,
+  exportAnalytics,
+  downloadCSV
+} from '../../services/analyticsService';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
+import {
+  Calendar,
+  TrendingUp,
+  Clock,
+  Users,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Download,
+  CalendarDays,
+  BarChart3,
+  RefreshCw
+} from 'lucide-react';
 
 const Analytics = () => {
+  const { business } = useBusiness();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dateRange, setDateRange] = useState('30'); // days
+  const [groupBy, setGroupBy] = useState('day');
+
+  // Analytics data states
+  const [overview, setOverview] = useState(null);
+  const [trends, setTrends] = useState([]);
+  const [popularDays, setPopularDays] = useState([]);
+  const [popularTimes, setPopularTimes] = useState([]);
+  const [serviceStats, setServiceStats] = useState([]);
+  const [mostPopularDay, setMostPopularDay] = useState('N/A');
+  const [peakHour, setPeakHour] = useState('N/A');
+  const [totalRevenue, setTotalRevenue] = useState(0);
+
+  // Calculate date range
+  const getDateParams = () => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - parseInt(dateRange));
+    return {
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0]
+    };
+  };
+
+  // Fetch all analytics data
+  const fetchAnalytics = useCallback(async () => {
+    if (!business?.id) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - parseInt(dateRange));
+      const params = {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0]
+      };
+
+      // Fetch all data in parallel
+      const [overviewRes, trendsRes, daysRes, timesRes, servicesRes] = await Promise.all([
+        getAnalyticsOverview(params),
+        getBookingTrends({ ...params, groupBy }),
+        getPopularDays(params),
+        getPopularTimeSlots(params),
+        getServicePerformance(params)
+      ]);
+
+      // Set overview data
+      if (overviewRes.success) {
+        setOverview(overviewRes.data.overview);
+      }
+
+      // Set trends data
+      if (trendsRes.success) {
+        setTrends(trendsRes.data.trends);
+      }
+
+      // Set popular days data
+      if (daysRes.success) {
+        setPopularDays(daysRes.data.dayStats);
+        setMostPopularDay(daysRes.data.mostPopularDay);
+      }
+
+      // Set popular times data
+      if (timesRes.success) {
+        setPopularTimes(timesRes.data.allHourStats || timesRes.data.hourStats);
+        setPeakHour(timesRes.data.peakHour);
+      }
+
+      // Set service performance data
+      if (servicesRes.success) {
+        setServiceStats(servicesRes.data.serviceStats);
+        setTotalRevenue(servicesRes.data.totalRevenue);
+      }
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
+      setError('Failed to load analytics data');
+    } finally {
+      setLoading(false);
+    }
+  }, [business?.id, dateRange, groupBy]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  // Export data as CSV
+  const handleExport = async () => {
+    try {
+      const params = getDateParams();
+      const blob = await exportAnalytics({ ...params, type: 'appointments' });
+      downloadCSV(blob, `appointments-${params.startDate}-to-${params.endDate}.csv`);
+    } catch (err) {
+      console.error('Error exporting data:', err);
+    }
+  };
+
+  // Format currency
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0
+    }).format(value);
+  };
+
+  // Prepare pie chart data for appointment status
+  const statusPieData = overview ? [
+    { name: 'Completed', value: overview.completedAppointments, color: '#10b981' },
+    { name: 'Confirmed', value: overview.confirmedAppointments, color: '#3b82f6' },
+    { name: 'Pending', value: overview.pendingAppointments, color: '#f59e0b' },
+    { name: 'Cancelled', value: overview.cancelledAppointments, color: '#ef4444' },
+    { name: 'No-show', value: overview.noShows, color: '#6b7280' }
+  ].filter(item => item.value > 0) : [];
+
+  if (loading && !overview) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Analytics</h2>
+          <p className="text-muted-foreground">Track your booking trends and business insights</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Analytics</h2>
-        <p className="text-muted-foreground">
-          Track your booking trends and business insights
-        </p>
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Analytics</h2>
+          <p className="text-muted-foreground">Track your booking trends and business insights</p>
+        </div>
+
+        {/* Controls */}
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="180">Last 6 months</option>
+            <option value="365">Last year</option>
+          </select>
+
+          <select
+            value={groupBy}
+            onChange={(e) => setGroupBy(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="day">Daily</option>
+            <option value="week">Weekly</option>
+            <option value="month">Monthly</option>
+          </select>
+
+          <Button variant="outline" size="sm" onClick={fetchAnalytics}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
+      {error && (
+        <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-md">
+          {error}
+        </div>
+      )}
+
+      {/* Overview Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Revenue
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$0</div>
+            <div className="text-2xl font-bold">{overview?.totalAppointments || 0}</div>
             <p className="text-xs text-muted-foreground">
-              All time
+              Last {dateRange} days
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Popular Day
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">{overview?.completionRate || 0}%</div>
             <p className="text-xs text-muted-foreground">
-              Most bookings
+              {overview?.completedAppointments || 0} completed
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Peak Hours
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Cancellation Rate</CardTitle>
+            <XCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">{overview?.cancellationRate || 0}%</div>
             <p className="text-xs text-muted-foreground">
-              Most active time
+              {overview?.cancelledAppointments || 0} cancelled
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              No-Show Rate
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">No-Show Rate</CardTitle>
+            <AlertCircle className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0%</div>
+            <div className="text-2xl font-bold">{overview?.noShowRate || 0}%</div>
             <p className="text-xs text-muted-foreground">
-              Last 30 days
+              {overview?.noShows || 0} no-shows
             </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Secondary Stats Row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground">From completed appointments</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Most Popular Day</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{mostPopularDay}</div>
+            <p className="text-xs text-muted-foreground">Highest booking volume</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Peak Hours</CardTitle>
+            <Clock className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{peakHour}</div>
+            <p className="text-xs text-muted-foreground">Most active time</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Users className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{overview?.pendingAppointments || 0}</div>
+            <p className="text-xs text-muted-foreground">Awaiting confirmation</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 1 */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        {/* Booking Trends Chart */}
+        <Card className="col-span-1 md:col-span-2 lg:col-span-1">
           <CardHeader>
-            <CardTitle>Booking Trends</CardTitle>
-            <CardDescription>
-              Your bookings over time
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Booking Trends
+            </CardTitle>
+            <CardDescription>Appointment volume over time</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Charts will appear here
-            </p>
+            {trends.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={trends}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    name="Total"
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="completed"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    name="Completed"
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cancelled"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    name="Cancelled"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                No booking data available for this period
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* Appointment Status Pie Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Popular Time Slots</CardTitle>
-            <CardDescription>
-              Most frequently booked times
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Appointment Status
+            </CardTitle>
+            <CardDescription>Distribution by status</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Time slot analysis coming soon
-            </p>
+            {statusPieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={statusPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {statusPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                No appointment data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Popular Days Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Popular Days
+            </CardTitle>
+            <CardDescription>Bookings by day of week</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {popularDays.some(d => d.total > 0) ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={popularDays}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => value.substring(0, 3)}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Total Bookings" />
+                  <Bar dataKey="completed" fill="#10b981" radius={[4, 4, 0, 0]} name="Completed" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                No booking data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Popular Time Slots Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Popular Time Slots
+            </CardTitle>
+            <CardDescription>Bookings by hour of day</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {popularTimes.some(t => t.total > 0) ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={popularTimes.filter(t => t.hour >= 6 && t.hour <= 22)}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="hourLabel"
+                    tick={{ fontSize: 11 }}
+                    interval={1}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Bar dataKey="total" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Bookings" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                No time slot data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Service Performance Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Service Performance
+          </CardTitle>
+          <CardDescription>Booking statistics by service</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {serviceStats.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium">Service</th>
+                    <th className="text-right py-3 px-4 font-medium">Total Bookings</th>
+                    <th className="text-right py-3 px-4 font-medium">Completed</th>
+                    <th className="text-right py-3 px-4 font-medium">Cancelled</th>
+                    <th className="text-right py-3 px-4 font-medium">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {serviceStats.map((service, index) => (
+                    <tr key={service.serviceId || index} className="border-b last:border-0">
+                      <td className="py-3 px-4">{service.serviceName}</td>
+                      <td className="text-right py-3 px-4">{service.totalBookings}</td>
+                      <td className="text-right py-3 px-4 text-green-600">{service.completedBookings}</td>
+                      <td className="text-right py-3 px-4 text-red-600">{service.cancelledBookings}</td>
+                      <td className="text-right py-3 px-4 font-medium">{formatCurrency(service.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/50">
+                    <td className="py-3 px-4 font-medium">Total</td>
+                    <td className="text-right py-3 px-4 font-medium">
+                      {serviceStats.reduce((sum, s) => sum + s.totalBookings, 0)}
+                    </td>
+                    <td className="text-right py-3 px-4 font-medium text-green-600">
+                      {serviceStats.reduce((sum, s) => sum + s.completedBookings, 0)}
+                    </td>
+                    <td className="text-right py-3 px-4 font-medium text-red-600">
+                      {serviceStats.reduce((sum, s) => sum + s.cancelledBookings, 0)}
+                    </td>
+                    <td className="text-right py-3 px-4 font-bold">{formatCurrency(totalRevenue)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-32 text-muted-foreground">
+              No service data available
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
