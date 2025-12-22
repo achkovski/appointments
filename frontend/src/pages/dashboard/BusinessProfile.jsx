@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useBusiness } from '../../context/BusinessContext';
+import { useToast } from '../../hooks/use-toast';
 import { updateBusiness, generateQRCode } from '../../services/businessService';
 
 const CAPACITY_MODES = [
@@ -27,6 +28,7 @@ const CAPACITY_MODES = [
 
 const BusinessProfile = () => {
   const { business, loading: businessLoading, updateBusiness: updateBusinessContext } = useBusiness();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -119,7 +121,11 @@ const BusinessProfile = () => {
       const response = await updateBusiness(business.id, updateData);
       await updateBusinessContext(response.business || response);
       setHasChanges(false);
-      alert('Business profile updated successfully!');
+      toast({
+        title: "Success!",
+        description: "Business profile updated successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error updating business:', err);
       setError(err.response?.data?.message || 'Failed to update business profile');
@@ -134,10 +140,18 @@ const BusinessProfile = () => {
       const response = await generateQRCode(business.id);
       setQrCodeUrl(response.qrCodeUrl || response.qrCode);
       await updateBusinessContext({ ...business, qrCodeUrl: response.qrCodeUrl || response.qrCode });
-      alert('QR Code generated successfully!');
+      toast({
+        title: "Success!",
+        description: "QR Code generated successfully",
+        variant: "success",
+      });
     } catch (err) {
       console.error('Error generating QR code:', err);
-      alert(err.response?.data?.message || 'Failed to generate QR code');
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to generate QR code',
+        variant: "destructive",
+      });
     } finally {
       setQrLoading(false);
     }

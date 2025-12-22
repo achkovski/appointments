@@ -70,7 +70,7 @@ export const deleteBusiness = async (businessId) => {
  * @returns {Promise} - QR code URL
  */
 export const generateQRCode = async (businessId) => {
-  const response = await api.post(`/businesses/${businessId}/qr-code`);
+  const response = await api.post(`/businesses/${businessId}/regenerate-qr`);
   return response.data;
 };
 
