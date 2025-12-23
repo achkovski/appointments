@@ -22,19 +22,24 @@ const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
-  const { business, loading: businessLoading } = useBusiness();
+  const { business, loading: businessLoading, error: businessError, refreshBusiness } = useBusiness();
   const { user, logout } = useAuth();
 
-  // Redirect to setup if no business exists
+  // Redirect to setup ONLY if user hasn't completed setup
+  // Use hasCompletedSetup from user object as the source of truth
   useEffect(() => {
-    if (!businessLoading && !business) {
+    if (user && !user.hasCompletedSetup) {
       navigate('/setup', { replace: true });
     }
-  }, [business, businessLoading, navigate]);
+  }, [user, navigate]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleRetry = async () => {
+    await refreshBusiness();
   };
 
   // Show loading while checking for business
@@ -49,9 +54,51 @@ const DashboardLayout = () => {
     );
   }
 
-  // Don't render dashboard if no business
-  if (!business) {
+  // Show error state if there was an error fetching business (but user has completed setup)
+  if (businessError && !business && user?.hasCompletedSetup) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center max-w-md px-4">
+          <div className="text-red-500 mb-4">
+            <svg className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Connection Error</h2>
+          <p className="text-muted-foreground mb-4">
+            Unable to load your business data. This could be due to a network issue or temporary server problem.
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            {businessError}
+          </p>
+          <div className="space-x-4">
+            <Button onClick={handleRetry}>
+              Try Again
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard if user hasn't completed setup (will redirect)
+  if (!user?.hasCompletedSetup) {
     return null;
+  }
+
+  // Show loading while business data is being fetched
+  if (businessLoading || !business) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading business data...</p>
+        </div>
+      </div>
+    );
   }
 
   const navigation = [

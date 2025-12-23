@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { eq, and, gt } from 'drizzle-orm';
 import db from '../config/database.js';
-import { users } from '../config/schema.js';
+import { users, businesses } from '../config/schema.js';
 import { generateJWT, generateRandomToken, hashToken } from '../utils/tokenGenerator.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
 
@@ -143,13 +143,29 @@ export const login = async (req, res) => {
     // Generate JWT
     const token = generateJWT(user.id, user.email, user.role);
 
+    // Fetch user's business if they have one
+    let businessId = null;
+    if (user.hasCompletedSetup) {
+      const business = await db.select({ id: businesses.id })
+        .from(businesses)
+        .where(eq(businesses.ownerId, user.id))
+        .limit(1);
+
+      if (business.length > 0) {
+        businessId = business[0].id;
+      }
+    }
+
     // Return user without password
     const { passwordHash, emailVerificationToken, resetPasswordToken, ...userWithoutPassword } = user;
 
     res.status(200).json({
       success: true,
       token,
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        businessId,
+      },
     });
   } catch (error) {
     console.error('Login error:', error);

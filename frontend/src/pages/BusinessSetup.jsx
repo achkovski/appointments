@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { Building2, AlertCircle, CheckCircle } from 'lucide-react';
 import { createBusiness } from '../services/businessService';
 import { useBusiness } from '../context/BusinessContext';
+import { useAuth } from '../context/AuthContext';
 
 const BUSINESS_TYPES = [
   { value: 'healthcare', label: 'Healthcare' },
@@ -26,7 +27,8 @@ const CAPACITY_MODES = [
 
 const BusinessSetup = () => {
   const navigate = useNavigate();
-  const { business, loading: businessLoading, setBusinessId } = useBusiness();
+  const { setBusinessId } = useBusiness();
+  const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
@@ -41,12 +43,12 @@ const BusinessSetup = () => {
   });
   const [errors, setErrors] = useState({});
 
-  // Redirect to dashboard if business already exists
+  // Redirect to dashboard if user has already completed setup
   useEffect(() => {
-    if (!businessLoading && business) {
+    if (user?.hasCompletedSetup) {
       navigate('/dashboard', { replace: true });
     }
-  }, [business, businessLoading, navigate]);
+  }, [user, navigate]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -91,6 +93,11 @@ const BusinessSetup = () => {
 
       // Set the business ID in context and localStorage
       await setBusinessId(business.id);
+
+      // Update user in auth context to reflect hasCompletedSetup = true
+      if (user) {
+        updateUser({ ...user, hasCompletedSetup: true, businessId: business.id });
+      }
 
       // Redirect to dashboard
       navigate('/dashboard');
