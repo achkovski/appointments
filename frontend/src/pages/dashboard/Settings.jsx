@@ -614,11 +614,13 @@ const Settings = () => {
                   id="accountEmail"
                   type="email"
                   value={accountSettings.email}
-                  onChange={(e) => handleAccountSettingChange('email', e.target.value)}
-                  placeholder="john@example.com"
-                  className="pl-10"
+                  disabled
+                  className="pl-10 bg-muted cursor-not-allowed"
                 />
               </div>
+              <p className="text-xs text-muted-foreground">
+                Email address cannot be changed. Contact support if you need to update it.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -649,6 +651,7 @@ const Settings = () => {
                   <Input
                     id="currentPassword"
                     type="password"
+                    autoComplete="off"
                     value={passwordData.currentPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                     placeholder="Enter current password"

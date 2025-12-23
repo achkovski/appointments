@@ -48,12 +48,16 @@ function minutesToTime(minutes) {
 
 /**
  * Get day of week from date (0 = Sunday, 6 = Saturday)
+ * Uses UTC to avoid timezone-related day shifts
  * @param {string} dateStr - Date in YYYY-MM-DD format
  * @returns {number} Day of week (0-6)
  */
 function getDayOfWeek(dateStr) {
-  const date = new Date(dateStr);
-  return date.getDay();
+  // Parse as UTC to avoid timezone issues
+  // Without this, "2025-12-22" could be interpreted as a different day
+  // depending on the server's timezone
+  const date = new Date(dateStr + 'T00:00:00Z');
+  return date.getUTCDay();
 }
 
 /**
@@ -458,8 +462,10 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
  */
 export async function calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate, allowPastSlots = false) {
   const results = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+
+  // Parse dates as UTC to avoid timezone issues
+  const start = new Date(startDate + 'T00:00:00Z');
+  const end = new Date(endDate + 'T00:00:00Z');
 
   // Limit to 30 days maximum
   const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
@@ -470,11 +476,16 @@ export async function calculateAvailableSlotsForRange(businessId, serviceId, sta
   const currentDate = new Date(start);
 
   while (currentDate <= end) {
-    const dateStr = currentDate.toISOString().split('T')[0];
+    // Use UTC methods to get the date string consistently
+    const year = currentDate.getUTCFullYear();
+    const month = String(currentDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
     const slots = await calculateAvailableSlots(businessId, serviceId, dateStr, null, allowPastSlots);
     results.push(slots);
 
-    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
   return results;
