@@ -41,13 +41,13 @@ export const createAppointment = async (appointmentData) => {
 };
 
 /**
- * Update appointment
+ * Reschedule appointment
  * @param {string} appointmentId - Appointment ID
- * @param {Object} appointmentData - Updated appointment data
+ * @param {Object} appointmentData - Reschedule data (appointmentDate, startTime, serviceId)
  * @returns {Promise} - Updated appointment
  */
 export const updateAppointment = async (appointmentId, appointmentData) => {
-  const response = await api.put(`/appointments/${appointmentId}`, appointmentData);
+  const response = await api.put(`/appointments/${appointmentId}/reschedule`, appointmentData);
   return response.data;
 };
 
@@ -90,8 +90,9 @@ export const confirmAppointment = async (appointmentId) => {
  * @returns {Promise} - Cancellation confirmation
  */
 export const cancelAppointment = async (appointmentId, reason) => {
-  const response = await api.delete(`/appointments/${appointmentId}`, {
-    data: { reason },
+  const response = await api.put(`/appointments/${appointmentId}/status`, {
+    status: 'CANCELLED',
+    cancellationReason: reason,
   });
   return response.data;
 };

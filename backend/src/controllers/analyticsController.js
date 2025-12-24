@@ -28,10 +28,22 @@ export const getAnalyticsOverview = async (req, res) => {
     const { startDate, endDate } = req.query;
 
     // Default to last 30 days if no date range provided
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
+    // Note: We don't restrict by endDate to include future appointments that may be cancelled/no-show
     const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : null; // null means no upper limit
 
-    // Get all appointments within date range
+    // Get all appointments from start date onwards (including future appointments)
+    // This ensures cancelled/no-show future appointments are counted in statistics
+    const whereConditions = [
+      eq(appointments.businessId, businessId),
+      gte(appointments.appointmentDate, start),
+    ];
+
+    // Only add end date filter if explicitly provided
+    if (end) {
+      whereConditions.push(lte(appointments.appointmentDate, end));
+    }
+
     const appointmentData = await db
       .select({
         id: appointments.id,
@@ -42,13 +54,7 @@ export const getAnalyticsOverview = async (req, res) => {
         serviceId: appointments.serviceId,
       })
       .from(appointments)
-      .where(
-        and(
-          eq(appointments.businessId, businessId),
-          gte(appointments.appointmentDate, start),
-          lte(appointments.appointmentDate, end)
-        )
-      );
+      .where(and(...whereConditions));
 
     // Calculate statistics
     const totalAppointments = appointmentData.length;
@@ -83,7 +89,7 @@ export const getAnalyticsOverview = async (req, res) => {
         },
         dateRange: {
           start,
-          end,
+          end: end || 'all future',
         },
       },
     });

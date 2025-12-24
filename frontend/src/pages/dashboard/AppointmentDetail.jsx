@@ -26,6 +26,7 @@ import {
   CalendarClock,
   Save,
   FileText,
+  UserX,
 } from 'lucide-react';
 import {
   Dialog,
@@ -249,6 +250,28 @@ const AppointmentDetail = () => {
       toast({
         title: "Error",
         description: err.response?.data?.message || 'Failed to mark as completed',
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMarkNoShow = async () => {
+    try {
+      setActionLoading(true);
+      await updateAppointmentStatus(id, 'NO_SHOW');
+      setAppointment({ ...appointment, status: 'NO_SHOW' });
+      toast({
+        title: "Success!",
+        description: "Appointment marked as no-show",
+        variant: "success",
+      });
+    } catch (err) {
+      console.error('Error marking as no-show:', err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to mark as no-show',
         variant: "destructive",
       });
     } finally {
@@ -576,14 +599,74 @@ const AppointmentDetail = () => {
               </>
             )}
             {appointment.status?.toUpperCase() === 'CONFIRMED' && (
-              <Button
-                variant="outline"
-                onClick={handleMarkCompleted}
-                disabled={actionLoading}
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                {actionLoading ? 'Updating...' : 'Mark as Completed'}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleMarkCompleted}
+                  disabled={actionLoading}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {actionLoading ? 'Updating...' : 'Mark as Completed'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleMarkNoShow}
+                  disabled={actionLoading}
+                >
+                  <UserX className="mr-2 h-4 w-4" />
+                  {actionLoading ? 'Updating...' : 'Mark as No Show'}
+                </Button>
+              </>
+            )}
+            {/* Actions for NO_SHOW appointments */}
+            {appointment.status?.toUpperCase() === 'NO_SHOW' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRescheduleDialog(true)}
+                  disabled={actionLoading}
+                >
+                  <CalendarClock className="mr-2 h-4 w-4" />
+                  Reschedule
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleUnapprove()}
+                  disabled={actionLoading}
+                >
+                  <AlertCircle className="mr-2 h-4 w-4" />
+                  {actionLoading ? 'Updating...' : 'Set to Pending'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleMarkCompleted}
+                  disabled={actionLoading}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {actionLoading ? 'Updating...' : 'Mark as Completed'}
+                </Button>
+              </>
+            )}
+            {/* Actions for CANCELLED appointments */}
+            {appointment.status?.toUpperCase() === 'CANCELLED' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRescheduleDialog(true)}
+                  disabled={actionLoading}
+                >
+                  <CalendarClock className="mr-2 h-4 w-4" />
+                  Reschedule
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleUnapprove()}
+                  disabled={actionLoading}
+                >
+                  <AlertCircle className="mr-2 h-4 w-4" />
+                  {actionLoading ? 'Updating...' : 'Reopen as Pending'}
+                </Button>
+              </>
             )}
           </div>
         </CardContent>

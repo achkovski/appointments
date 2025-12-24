@@ -585,31 +585,24 @@ export const createManualAppointment = async (req, res) => {
 
     const serviceData = service[0];
 
-    // Calculate available slots for the requested date
-    // Allow past slots for business users (they can add appointments made by phone)
-    const slotsData = await calculateAvailableSlots(businessId, serviceId, appointmentDate, null, true);
+    // Business owners can create appointments at ANY time (for emergencies, custom scheduling, etc.)
+    // We skip slot availability validation for manual appointments
+    // This allows flexibility for phone bookings, emergency appointments, etc.
 
-    if (!slotsData.available) {
+    // Validate time format (HH:MM or HH:MM:SS)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
+    if (!timeRegex.test(startTime)) {
       return res.status(400).json({
         success: false,
-        message: `No slots available on ${appointmentDate}`,
-        reason: slotsData.reason
+        message: 'Invalid time format. Use HH:MM format.'
       });
     }
 
-    // Verify the requested time slot is available
-    const requestedSlot = slotsData.slots.find(slot => slot.startTime === startTime);
-
-    if (!requestedSlot) {
-      return res.status(400).json({
-        success: false,
-        message: `Time slot ${startTime} is not available`,
-        availableSlots: slotsData.slots
-      });
-    }
+    // Normalize time to HH:MM format
+    const normalizedStartTime = startTime.substring(0, 5);
 
     // Calculate end time
-    const [hours, minutes] = startTime.split(':').map(Number);
+    const [hours, minutes] = normalizedStartTime.split(':').map(Number);
     const endMinutes = hours * 60 + minutes + serviceData.duration;
     const endHours = Math.floor(endMinutes / 60);
     const endMins = endMinutes % 60;
@@ -626,7 +619,7 @@ export const createManualAppointment = async (req, res) => {
       clientEmail: clientEmail.toLowerCase().trim(),
       clientPhone,
       appointmentDate,
-      startTime,
+      startTime: normalizedStartTime,
       endTime,
       status: 'CONFIRMED', // Manual appointments are auto-confirmed
       isEmailConfirmed: true, // Skip email confirmation for manual bookings
@@ -648,7 +641,7 @@ export const createManualAppointment = async (req, res) => {
         businessName: businessData.businessName,
         serviceName: serviceData.name,
         appointmentDate,
-        startTime,
+        startTime: normalizedStartTime,
         endTime,
         requiresConfirmation: false,
         confirmationToken: null,
@@ -669,7 +662,7 @@ export const createManualAppointment = async (req, res) => {
         businessName: businessData.businessName,
         serviceName: serviceData.name,
         appointmentDate,
-        startTime,
+        startTime: normalizedStartTime,
         endTime,
         status: newAppointment.status,
         clientFirstName,
@@ -968,37 +961,24 @@ export const rescheduleAppointment = async (req, res) => {
 
     const serviceData = service[0];
 
-    // Calculate available slots for the new date
-    // Allow past slots for business users (they can reschedule to past times if needed)
-    const slotsData = await calculateAvailableSlots(
-      apt.businessId,
-      targetServiceId,
-      appointmentDate,
-      appointmentId, // Exclude current appointment from availability check
-      true // allowPastSlots
-    );
+    // Business owners can reschedule to ANY time (for emergencies, custom appointments, etc.)
+    // We skip slot availability validation for admin rescheduling
+    // This allows flexibility for emergency appointments, custom scheduling, etc.
 
-    if (!slotsData.available) {
+    // Validate time format (HH:MM or HH:MM:SS)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
+    if (!timeRegex.test(startTime)) {
       return res.status(400).json({
         success: false,
-        message: `No slots available on ${appointmentDate}`,
-        reason: slotsData.reason
+        message: 'Invalid time format. Use HH:MM format.'
       });
     }
 
-    // Verify the requested time slot is available
-    const requestedSlot = slotsData.slots.find(slot => slot.startTime === startTime);
-
-    if (!requestedSlot) {
-      return res.status(400).json({
-        success: false,
-        message: `Time slot ${startTime} is not available`,
-        availableSlots: slotsData.slots
-      });
-    }
+    // Normalize time to HH:MM format
+    const normalizedStartTime = startTime.substring(0, 5);
 
     // Calculate new end time
-    const [hours, minutes] = startTime.split(':').map(Number);
+    const [hours, minutes] = normalizedStartTime.split(':').map(Number);
     const endMinutes = hours * 60 + minutes + serviceData.duration;
     const endHours = Math.floor(endMinutes / 60);
     const endMins = endMinutes % 60;
@@ -1008,7 +988,7 @@ export const rescheduleAppointment = async (req, res) => {
     await db.update(appointments)
       .set({
         appointmentDate,
-        startTime,
+        startTime: normalizedStartTime,
         endTime,
         serviceId: targetServiceId,
         updatedAt: new Date().toISOString()
@@ -1027,7 +1007,7 @@ export const rescheduleAppointment = async (req, res) => {
         oldDate: apt.appointmentDate,
         oldStartTime: apt.startTime,
         newDate: appointmentDate,
-        newStartTime: startTime,
+        newStartTime: normalizedStartTime,
         newEndTime: endTime
       });
     } catch (emailError) {
@@ -1040,7 +1020,7 @@ export const rescheduleAppointment = async (req, res) => {
       message: 'Appointment rescheduled successfully',
       data: {
         appointmentDate,
-        startTime,
+        startTime: normalizedStartTime,
         endTime
       }
     });

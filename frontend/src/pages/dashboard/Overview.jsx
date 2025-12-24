@@ -46,9 +46,10 @@ const Overview = () => {
         status: 'CONFIRMED',
       });
 
-      // Get pending appointments
+      // Get pending appointments (from last 30 days onwards for consistency with analytics)
       const pendingResponse = await getAppointments(business.id, {
         status: 'PENDING',
+        startDate: thirtyDaysAgo,
       });
 
       // Get last 30 days for cancellation rate
