@@ -4,6 +4,11 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import businessRoutes from './routes/businessRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
+import availabilityRoutes from './routes/availabilityRoutes.js';
+import publicBookingRoutes from './routes/publicBookingRoutes.js';
+import appointmentRoutes from './routes/appointmentRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
+import { startReminderScheduler } from './services/reminderScheduler.js';
 
 dotenv.config();
 
@@ -35,6 +40,10 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api', availabilityRoutes);
+app.use('/api/public', publicBookingRoutes);
+app.use('/api', appointmentRoutes);
+app.use('/api', analyticsRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -56,4 +65,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // Start the appointment reminder scheduler
+  startReminderScheduler();
+  console.log(`📧 Reminder scheduler initialized`);
 });

@@ -3,7 +3,7 @@ import slugify from 'slugify';
 import QRCode from 'qrcode';
 import { eq, and, ne } from 'drizzle-orm';
 import db from '../config/database.js';
-import { businesses, services } from '../config/schema.js';
+import { businesses, services, users } from '../config/schema.js';
 
 // Generate UUID for new records
 const generateId = () => crypto.randomUUID();
@@ -126,6 +126,7 @@ export const createBusiness = async (req, res) => {
 
     // Create business
     const now = new Date().toISOString();
+    const normalizedCapacityMode = capacityMode.toUpperCase();
     const [newBusiness] = await db.insert(businesses).values({
       id: generateId(),
       ownerId: req.user.id,
@@ -138,14 +139,19 @@ export const createBusiness = async (req, res) => {
       website: website || null,
       businessType: businessType || null,
       qrCodeUrl,
-      capacityMode,
-      defaultCapacity: capacityMode === 'MULTIPLE' ? defaultCapacity : 1,
+      capacityMode: normalizedCapacityMode,
+      defaultCapacity: normalizedCapacityMode === 'MULTIPLE' ? defaultCapacity : 1,
       defaultSlotInterval,
       autoConfirm,
       requireEmailConfirmation,
-      settings: settings || null,
+      settings,
       updatedAt: now,
     }).returning();
+
+    // Update user's hasCompletedSetup flag
+    await db.update(users)
+      .set({ hasCompletedSetup: true, updatedAt: now })
+      .where(eq(users.id, req.user.id));
 
     res.status(201).json({
       success: true,

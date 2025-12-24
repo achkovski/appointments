@@ -31,6 +31,22 @@ export const createService = async (req, res) => {
       });
     }
 
+    // Validate duration is a positive integer
+    if (typeof duration !== 'number' || duration < 5 || duration > 480) {
+      return res.status(400).json({
+        success: false,
+        error: 'Service duration must be between 5 and 480 minutes (8 hours)',
+      });
+    }
+
+    // Validate duration is in increments of 5 minutes
+    if (duration % 5 !== 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Service duration must be in 5-minute increments',
+      });
+    }
+
     // Check if business exists and belongs to user
     const business = await db.query.businesses.findFirst({
       where: and(
@@ -214,6 +230,23 @@ export const updateService = async (req, res) => {
       });
     }
 
+    // Validate duration if provided
+    if (duration !== undefined) {
+      if (typeof duration !== 'number' || duration < 5 || duration > 480) {
+        return res.status(400).json({
+          success: false,
+          error: 'Service duration must be between 5 and 480 minutes (8 hours)',
+        });
+      }
+
+      if (duration % 5 !== 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Service duration must be in 5-minute increments',
+        });
+      }
+    }
+
     // Prepare update data
     const updateData = {
       updatedAt: new Date(),
@@ -243,6 +276,67 @@ export const updateService = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error updating service',
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Toggle service active/inactive status
+ * @route   PUT /api/services/:id/toggle
+ * @access  Private
+ */
+export const toggleServiceStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get service
+    const existingService = await db.query.services.findFirst({
+      where: eq(services.id, id),
+    });
+
+    if (!existingService) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found',
+      });
+    }
+
+    // Check if business belongs to user
+    const business = await db.query.businesses.findFirst({
+      where: and(
+        eq(businesses.id, existingService.businessId),
+        eq(businesses.ownerId, req.user.id)
+      ),
+    });
+
+    if (!business) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized access to this service',
+      });
+    }
+
+    // Toggle isActive status
+    const [updatedService] = await db
+      .update(services)
+      .set({
+        isActive: !existingService.isActive,
+        updatedAt: new Date(),
+      })
+      .where(eq(services.id, id))
+      .returning();
+
+    res.status(200).json({
+      success: true,
+      message: `Service ${updatedService.isActive ? 'activated' : 'deactivated'} successfully`,
+      service: updatedService,
+    });
+  } catch (error) {
+    console.error('Toggle service status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error toggling service status',
       message: error.message,
     });
   }
@@ -371,6 +465,7 @@ export default {
   getServicesByBusiness,
   getServiceById,
   updateService,
+  toggleServiceStatus,
   deleteService,
   reorderServices,
 };

@@ -4,6 +4,7 @@ import {
   getServicesByBusiness,
   getServiceById,
   updateService,
+  toggleServiceStatus,
   deleteService,
   reorderServices,
 } from '../controllers/serviceController.js';
@@ -14,9 +15,10 @@ const router = express.Router();
 // All routes are protected (require authentication)
 router.post('/', protect, createService);
 router.get('/business/:businessId', protect, getServicesByBusiness);
+router.put('/business/:businessId/reorder', protect, reorderServices);
+router.put('/:id/toggle', protect, toggleServiceStatus); // Must be before /:id route
 router.get('/:id', protect, getServiceById);
 router.put('/:id', protect, updateService);
 router.delete('/:id', protect, deleteService);
-router.put('/business/:businessId/reorder', protect, reorderServices);
 
 export default router;
