@@ -161,7 +161,7 @@ const DashboardLayout = () => {
           {sidebarOpen && (
             <Link to="/dashboard" className="flex items-center space-x-2">
               <Calendar className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">Appointments</span>
+              <span className="text-xl font-bold">AppointMe</span>
             </Link>
           )}
           <Button
