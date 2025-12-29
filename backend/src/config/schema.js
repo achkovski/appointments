@@ -94,6 +94,7 @@ export const appointments = pgTable("appointments", {
 	id: text().primaryKey().notNull(),
 	businessId: text("business_id").notNull(),
 	serviceId: text("service_id").notNull(),
+	employeeId: text("employee_id"),
 	clientUserId: text("client_user_id"),
 	clientFirstName: text("client_first_name").notNull(),
 	clientLastName: text("client_last_name").notNull(),
@@ -108,6 +109,7 @@ export const appointments = pgTable("appointments", {
 	notes: text(),
 	clientNotes: text("client_notes"),
 	cancellationReason: text("cancellation_reason"),
+	reassignmentNote: text("reassignment_note"),
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull(),
 }, (table) => [
@@ -116,6 +118,7 @@ export const appointments = pgTable("appointments", {
 	index("appointments_client_user_id_idx").using("btree", table.clientUserId.asc().nullsLast().op("text_ops")),
 	index("appointments_service_id_idx").using("btree", table.serviceId.asc().nullsLast().op("text_ops")),
 	index("appointments_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
+	index("appointments_employee_id_idx").using("btree", table.employeeId.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.businessId],
 			foreignColumns: [businesses.id],
@@ -226,5 +229,106 @@ export const analytics = pgTable("analytics", {
 			columns: [table.businessId],
 			foreignColumns: [businesses.id],
 			name: "analytics_business_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+// Employees table
+export const employees = pgTable("employees", {
+	id: text().primaryKey().notNull(),
+	businessId: text("business_id").notNull(),
+	name: text().notNull(),
+	email: text(),
+	phone: text(),
+	useBusinessEmail: boolean("use_business_email").default(false).notNull(),
+	useBusinessPhone: boolean("use_business_phone").default(false).notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	maxDailyAppointments: integer("max_daily_appointments").default(0),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull(),
+}, (table) => [
+	index("employees_business_id_idx").using("btree", table.businessId.asc().nullsLast().op("text_ops")),
+	index("employees_business_id_is_active_idx").using("btree", table.businessId.asc().nullsLast().op("text_ops"), table.isActive.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.businessId],
+			foreignColumns: [businesses.id],
+			name: "employees_business_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+// Employee-Service junction table (many-to-many)
+export const employeeServices = pgTable("employee_services", {
+	id: text().primaryKey().notNull(),
+	employeeId: text("employee_id").notNull(),
+	serviceId: text("service_id").notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	uniqueIndex("employee_services_employee_id_service_id_key").using("btree", table.employeeId.asc().nullsLast().op("text_ops"), table.serviceId.asc().nullsLast().op("text_ops")),
+	index("employee_services_employee_id_idx").using("btree", table.employeeId.asc().nullsLast().op("text_ops")),
+	index("employee_services_service_id_idx").using("btree", table.serviceId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.employeeId],
+			foreignColumns: [employees.id],
+			name: "employee_services_employee_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.serviceId],
+			foreignColumns: [services.id],
+			name: "employee_services_service_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+// Employee availability (working hours per day)
+export const employeeAvailability = pgTable("employee_availability", {
+	id: text().primaryKey().notNull(),
+	employeeId: text("employee_id").notNull(),
+	dayOfWeek: integer("day_of_week").notNull(),
+	startTime: time("start_time").notNull(),
+	endTime: time("end_time").notNull(),
+	isAvailable: boolean("is_available").default(true).notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull(),
+}, (table) => [
+	index("employee_availability_employee_id_idx").using("btree", table.employeeId.asc().nullsLast().op("text_ops")),
+	index("employee_availability_employee_id_day_of_week_idx").using("btree", table.employeeId.asc().nullsLast().op("int4_ops"), table.dayOfWeek.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.employeeId],
+			foreignColumns: [employees.id],
+			name: "employee_availability_employee_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+// Employee breaks
+export const employeeBreaks = pgTable("employee_breaks", {
+	id: text().primaryKey().notNull(),
+	employeeAvailabilityId: text("employee_availability_id").notNull(),
+	breakStart: time("break_start").notNull(),
+	breakEnd: time("break_end").notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("employee_breaks_employee_availability_id_idx").using("btree", table.employeeAvailabilityId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.employeeAvailabilityId],
+			foreignColumns: [employeeAvailability.id],
+			name: "employee_breaks_employee_availability_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+// Employee special dates (exceptions)
+export const employeeSpecialDates = pgTable("employee_special_dates", {
+	id: text().primaryKey().notNull(),
+	employeeId: text("employee_id").notNull(),
+	date: date().notNull(),
+	isAvailable: boolean("is_available").default(false).notNull(),
+	startTime: time("start_time"),
+	endTime: time("end_time"),
+	reason: text(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("employee_special_dates_employee_id_idx").using("btree", table.employeeId.asc().nullsLast().op("text_ops")),
+	index("employee_special_dates_employee_id_date_idx").using("btree", table.employeeId.asc().nullsLast().op("date_ops"), table.date.asc().nullsLast().op("date_ops")),
+	foreignKey({
+			columns: [table.employeeId],
+			foreignColumns: [employees.id],
+			name: "employee_special_dates_employee_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
 ]);

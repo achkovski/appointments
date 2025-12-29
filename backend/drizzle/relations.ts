@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, businesses, services, appointments, availability, breaks, specialDates, notifications, analytics } from "./schema";
+import { users, businesses, services, appointments, availability, breaks, specialDates, notifications, analytics, employees, employeeServices, employeeAvailability, employeeBreaks, employeeSpecialDates } from "./schema";
 
 export const businessesRelations = relations(businesses, ({one, many}) => ({
 	user: one(users, {
@@ -11,6 +11,7 @@ export const businessesRelations = relations(businesses, ({one, many}) => ({
 	availabilities: many(availability),
 	specialDates: many(specialDates),
 	analytics: many(analytics),
+	employees: many(employees),
 }));
 
 export const usersRelations = relations(users, ({many}) => ({
@@ -24,6 +25,7 @@ export const servicesRelations = relations(services, ({one, many}) => ({
 		references: [businesses.id]
 	}),
 	appointments: many(appointments),
+	employeeServices: many(employeeServices),
 }));
 
 export const appointmentsRelations = relations(appointments, ({one, many}) => ({
@@ -38,6 +40,10 @@ export const appointmentsRelations = relations(appointments, ({one, many}) => ({
 	user: one(users, {
 		fields: [appointments.clientUserId],
 		references: [users.id]
+	}),
+	employee: one(employees, {
+		fields: [appointments.employeeId],
+		references: [employees.id]
 	}),
 	notifications: many(notifications),
 }));
@@ -75,5 +81,50 @@ export const analyticsRelations = relations(analytics, ({one}) => ({
 	business: one(businesses, {
 		fields: [analytics.businessId],
 		references: [businesses.id]
+	}),
+}));
+
+// Employee relations
+export const employeesRelations = relations(employees, ({one, many}) => ({
+	business: one(businesses, {
+		fields: [employees.businessId],
+		references: [businesses.id]
+	}),
+	employeeServices: many(employeeServices),
+	employeeAvailability: many(employeeAvailability),
+	employeeSpecialDates: many(employeeSpecialDates),
+	appointments: many(appointments),
+}));
+
+export const employeeServicesRelations = relations(employeeServices, ({one}) => ({
+	employee: one(employees, {
+		fields: [employeeServices.employeeId],
+		references: [employees.id]
+	}),
+	service: one(services, {
+		fields: [employeeServices.serviceId],
+		references: [services.id]
+	}),
+}));
+
+export const employeeAvailabilityRelations = relations(employeeAvailability, ({one, many}) => ({
+	employee: one(employees, {
+		fields: [employeeAvailability.employeeId],
+		references: [employees.id]
+	}),
+	breaks: many(employeeBreaks),
+}));
+
+export const employeeBreaksRelations = relations(employeeBreaks, ({one}) => ({
+	employeeAvailability: one(employeeAvailability, {
+		fields: [employeeBreaks.employeeAvailabilityId],
+		references: [employeeAvailability.id]
+	}),
+}));
+
+export const employeeSpecialDatesRelations = relations(employeeSpecialDates, ({one}) => ({
+	employee: one(employees, {
+		fields: [employeeSpecialDates.employeeId],
+		references: [employees.id]
 	}),
 }));

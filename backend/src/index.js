@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import businessRoutes from './routes/businessRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
+import employeeRoutes from './routes/employeeRoutes.js';
 import availabilityRoutes from './routes/availabilityRoutes.js';
 import publicBookingRoutes from './routes/publicBookingRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
@@ -40,6 +41,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/employees', employeeRoutes);
 app.use('/api', availabilityRoutes);
 app.use('/api/public', publicBookingRoutes);
 app.use('/api', appointmentRoutes);

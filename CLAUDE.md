@@ -23,6 +23,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a General Business appointment management system built as a monorepo with separate backend and frontend applications. The system allows businesses to manage bookings, track appointments, and provide clients with scheduling interfaces.
 
+## Advanced Features
+
+### Employees
+
+Our system will allow business owners to access the "Employees" menu to manage their employees. Our system will allow them to enter, edit (with a modal) and delete employees. Each employee will have an email address (or a checkbox for the same system address of the business), name, telephone number (same logic as the email address) and assigned service(s). Business owners can assign services to their employees. This will allow them to separate services for each employee and manage their booking relations better. Now if we add these changes, we must make changes to the booking process. So currently, the client chooses a service first in the booking process. If the business user has selected the "Allow employee specific services booking" setting then we need to adjust the booking process. But to keep things simple, we can just show employee names in the cards of the service in the booking page so the user can choose which service and which employee to book. We also need to add a filter in the appointments page table so we can filter appointments by employee. In the appointment details section if the appointment has a selected employee, we need to show it accordingly (and its enabled in the settings). Later on it is planned to have different login info for users so they can log into a simplified dashboard to view only their upcoming appointments and manage them (without the fuss of all the business owner menus). We also need to reflect specific employee appointments in the analytics page so we can properly show which employee has the most appointments etc. This feature should no break any other features currently working. It should just improve on the already good booking process. The logic is simple, if the business owner allows multiple clients booking then each service assigned to a specific employee (1 employee can have multiple services assigned, and 1 service can be assigned to multiple employees) can be booked in the booking page so clients can have a choice which employee to make an appointment with. 
+
 ## Architecture
 
 ### Monorepo Structure

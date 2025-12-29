@@ -1,6 +1,6 @@
 import { calculateAvailableSlots, calculateAvailableSlotsForRange } from '../services/slotCalculator.js';
 import db from '../config/database.js';
-import { businesses, services } from '../config/schema.js';
+import { businesses, services, employees, employeeServices } from '../config/schema.js';
 import { eq, and } from 'drizzle-orm';
 
 /**
@@ -264,8 +264,88 @@ export const getAvailableSlotsRange = async (req, res) => {
   }
 };
 
+/**
+ * Get employees for a specific service (public endpoint)
+ * GET /api/public/service/:serviceId/employees
+ * Returns only active employees assigned to the service
+ */
+export const getEmployeesForService = async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+
+    // Get service
+    const service = await db.query.services.findFirst({
+      where: eq(services.id, serviceId),
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    // Get business to check if employee booking is enabled
+    const business = await db.query.businesses.findFirst({
+      where: eq(businesses.id, service.businessId),
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found'
+      });
+    }
+
+    // Check if employee booking is enabled
+    const settings = business.settings || {};
+    if (!settings.allowEmployeeBooking) {
+      return res.json({
+        success: true,
+        data: {
+          employeeBookingEnabled: false,
+          employees: []
+        }
+      });
+    }
+
+    // Get active employees assigned to this service
+    const assignments = await db.query.employeeServices.findMany({
+      where: eq(employeeServices.serviceId, serviceId),
+      with: {
+        employee: true,
+      },
+    });
+
+    // Filter only active employees and format response
+    const activeEmployees = assignments
+      .filter(a => a.employee.isActive)
+      .map(a => ({
+        id: a.employee.id,
+        name: a.employee.name,
+      }));
+
+    res.json({
+      success: true,
+      data: {
+        employeeBookingEnabled: true,
+        employees: activeEmployees
+      }
+    });
+
+  } catch (error) {
+    console.error('Get employees for service error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve employees',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   getBusinessBySlug,
   getAvailableSlots,
-  getAvailableSlotsRange
+  getAvailableSlotsRange,
+  getEmployeesForService
 };

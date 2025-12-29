@@ -2,7 +2,8 @@ import express from 'express';
 import {
   getBusinessBySlug,
   getAvailableSlots,
-  getAvailableSlotsRange
+  getAvailableSlotsRange,
+  getEmployeesForService
 } from '../controllers/publicBookingController.js';
 import {
   createGuestAppointment,
@@ -61,5 +62,12 @@ router.post('/confirm-appointment', confirmAppointmentEmail);
  * @body    { appointmentId, email, cancellationReason }
  */
 router.post('/cancel-appointment', cancelAppointmentByClient);
+
+/**
+ * @route   GET /api/public/service/:serviceId/employees
+ * @desc    Get employees assigned to a service (for booking selection)
+ * @access  Public
+ */
+router.get('/service/:serviceId/employees', getEmployeesForService);
 
 export default router;
