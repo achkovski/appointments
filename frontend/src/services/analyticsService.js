@@ -79,11 +79,28 @@ export const getPopularTimeSlots = async (params = {}) => {
  */
 export const getServicePerformance = async (params = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   if (params.startDate) queryParams.append('startDate', params.startDate);
   if (params.endDate) queryParams.append('endDate', params.endDate);
-  
+
   const response = await api.get(`/analytics/services?${queryParams}`);
+  return response.data;
+};
+
+/**
+ * Get employee performance analytics
+ * @param {Object} params - Query parameters
+ * @param {string} params.startDate - Start date (YYYY-MM-DD)
+ * @param {string} params.endDate - End date (YYYY-MM-DD)
+ * @returns {Promise} - Employee performance data
+ */
+export const getEmployeePerformance = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  if (params.startDate) queryParams.append('startDate', params.startDate);
+  if (params.endDate) queryParams.append('endDate', params.endDate);
+
+  const response = await api.get(`/analytics/employees?${queryParams}`);
   return response.data;
 };
 

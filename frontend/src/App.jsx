@@ -10,6 +10,7 @@ import Overview from './pages/dashboard/Overview';
 import Appointments from './pages/dashboard/Appointments';
 import AppointmentDetail from './pages/dashboard/AppointmentDetail';
 import Services from './pages/dashboard/Services';
+import Employees from './pages/dashboard/Employees';
 import Availability from './pages/dashboard/Availability';
 import Analytics from './pages/dashboard/Analytics';
 import BusinessProfile from './pages/dashboard/BusinessProfile';
@@ -61,6 +62,7 @@ function App() {
             <Route path="appointments" element={<Appointments />} />
             <Route path="appointments/:id" element={<AppointmentDetail />} />
             <Route path="services" element={<Services />} />
+            <Route path="employees" element={<Employees />} />
             <Route path="availability" element={<Availability />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="business" element={<BusinessProfile />} />

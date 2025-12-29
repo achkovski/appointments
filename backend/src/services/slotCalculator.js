@@ -1,5 +1,5 @@
 import db from '../config/database.js';
-import { availability, breaks, specialDates, appointments, services, businesses } from '../config/schema.js';
+import { availability, breaks, specialDates, appointments, services, businesses, employees, employeeAvailability, employeeBreaks, employeeSpecialDates, employeeServices } from '../config/schema.js';
 import { eq, and } from 'drizzle-orm';
 
 /**
@@ -159,34 +159,181 @@ export async function getBreaksForAvailability(availabilityId) {
 }
 
 /**
- * Get existing appointments for a specific date and service
+ * Get working hours for a specific employee on a date
+ * Considers employee-specific special dates and availability
+ * Falls back to business availability if employee has no custom schedule
+ *
+ * @param {string} employeeId - Employee ID
+ * @param {string} businessId - Business ID (for fallback)
+ * @param {string} dateStr - Date in YYYY-MM-DD format
+ * @returns {Promise<Object|null>} Working hours object or null if unavailable
+ */
+export async function getEmployeeWorkingHoursForDate(employeeId, businessId, dateStr) {
+  // First, check for employee-specific special date override
+  const empSpecialDate = await db.select().from(employeeSpecialDates)
+    .where(and(
+      eq(employeeSpecialDates.employeeId, employeeId),
+      eq(employeeSpecialDates.date, dateStr)
+    ))
+    .limit(1);
+
+  if (empSpecialDate.length > 0) {
+    const special = empSpecialDate[0];
+
+    // If marked as unavailable (day off)
+    if (!special.isAvailable) {
+      return null;
+    }
+
+    // If custom hours are set
+    if (special.startTime && special.endTime) {
+      return {
+        startTime: formatTime(special.startTime),
+        endTime: formatTime(special.endTime),
+        isSpecialDate: true,
+        isEmployeeSchedule: true
+      };
+    }
+  }
+
+  // Get employee's standard availability for this day of week
+  const dayOfWeek = getDayOfWeek(dateStr);
+
+  const empAvailabilityRules = await db.select().from(employeeAvailability)
+    .where(and(
+      eq(employeeAvailability.employeeId, employeeId),
+      eq(employeeAvailability.dayOfWeek, dayOfWeek)
+    ))
+    .limit(1);
+
+  // If employee has custom availability for this day
+  if (empAvailabilityRules.length > 0) {
+    const rule = empAvailabilityRules[0];
+
+    if (!rule.isAvailable) {
+      return null;
+    }
+
+    return {
+      startTime: formatTime(rule.startTime),
+      endTime: formatTime(rule.endTime),
+      availabilityId: rule.id,
+      isSpecialDate: false,
+      isEmployeeSchedule: true
+    };
+  }
+
+  // Fall back to business availability
+  const businessHours = await getWorkingHoursForDate(businessId, dateStr);
+  if (businessHours) {
+    return {
+      ...businessHours,
+      isEmployeeSchedule: false
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Get break periods for a specific employee availability rule
+ *
+ * @param {string} employeeAvailabilityId - Employee availability rule ID
+ * @returns {Promise<Array>} Array of break periods with start and end times
+ */
+export async function getEmployeeBreaksForAvailability(employeeAvailabilityId) {
+  if (!employeeAvailabilityId) return [];
+
+  const breakPeriods = await db.select().from(employeeBreaks)
+    .where(eq(employeeBreaks.employeeAvailabilityId, employeeAvailabilityId))
+    .orderBy(employeeBreaks.breakStart);
+
+  return breakPeriods.map(b => ({
+    start: formatTime(b.breakStart),
+    end: formatTime(b.breakEnd)
+  }));
+}
+
+/**
+ * Get existing appointments for a specific date, service, and optionally employee
  *
  * @param {string} businessId - Business ID
  * @param {string} serviceId - Service ID
  * @param {string} dateStr - Date in YYYY-MM-DD format
  * @param {string} excludeAppointmentId - Optional appointment ID to exclude (for rescheduling)
+ * @param {string} employeeId - Optional employee ID to filter by
  * @returns {Promise<Array>} Array of appointments with start and end times
  */
-export async function getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId = null) {
+export async function getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId = null, employeeId = null) {
   const existingAppointments = await db.select().from(appointments)
     .where(and(
       eq(appointments.businessId, businessId),
       eq(appointments.serviceId, serviceId),
-      eq(appointments.appointmentDate, dateStr),
-      // Only consider confirmed or pending appointments
-      // (not cancelled or no-show)
+      eq(appointments.appointmentDate, dateStr)
     ));
 
   // Filter out cancelled, no-show appointments, and excluded appointment
-  const activeAppointments = existingAppointments.filter(
+  let activeAppointments = existingAppointments.filter(
     apt => apt.status !== 'CANCELLED' && apt.status !== 'NO_SHOW' && apt.id !== excludeAppointmentId
   );
+
+  // If employeeId is specified, filter by employee
+  if (employeeId) {
+    activeAppointments = activeAppointments.filter(apt => apt.employeeId === employeeId);
+  }
 
   return activeAppointments.map(apt => ({
     start: formatTime(apt.startTime),
     end: formatTime(apt.endTime),
-    status: apt.status
+    status: apt.status,
+    employeeId: apt.employeeId
   }));
+}
+
+/**
+ * Get employee's daily appointment count for checking maxDailyAppointments limit
+ *
+ * @param {string} employeeId - Employee ID
+ * @param {string} dateStr - Date in YYYY-MM-DD format
+ * @param {string} excludeAppointmentId - Optional appointment ID to exclude
+ * @returns {Promise<number>} Count of active appointments
+ */
+export async function getEmployeeDailyAppointmentCount(employeeId, dateStr, excludeAppointmentId = null) {
+  const existingAppointments = await db.select().from(appointments)
+    .where(and(
+      eq(appointments.employeeId, employeeId),
+      eq(appointments.appointmentDate, dateStr)
+    ));
+
+  const activeAppointments = existingAppointments.filter(
+    apt => apt.status !== 'CANCELLED' && apt.status !== 'NO_SHOW' && apt.id !== excludeAppointmentId
+  );
+
+  return activeAppointments.length;
+}
+
+/**
+ * Get employees assigned to a service
+ *
+ * @param {string} serviceId - Service ID
+ * @param {boolean} activeOnly - Only return active employees
+ * @returns {Promise<Array>} Array of employees
+ */
+export async function getEmployeesForService(serviceId, activeOnly = true) {
+  const assignments = await db.query.employeeServices.findMany({
+    where: eq(employeeServices.serviceId, serviceId),
+    with: {
+      employee: true,
+    },
+  });
+
+  let result = assignments.map(a => a.employee);
+
+  if (activeOnly) {
+    result = result.filter(e => e.isActive);
+  }
+
+  return result;
 }
 
 /**
@@ -197,10 +344,11 @@ export async function getExistingAppointments(businessId, serviceId, dateStr, ex
  * @param {string} dateStr - Date in YYYY-MM-DD format
  * @param {string} excludeAppointmentId - Optional appointment ID to exclude (for rescheduling)
  * @param {boolean} allowPastSlots - If true, includes past time slots (for admin/business users)
- * @param {Object} options - Additional options (e.g., bufferTime override)
+ * @param {Object} options - Additional options (e.g., bufferTime override, employeeId)
  * @returns {Promise<Object>} Object with available slots and metadata
  */
 export async function calculateAvailableSlots(businessId, serviceId, dateStr, excludeAppointmentId = null, allowPastSlots = false, options = {}) {
+  const { employeeId } = options;
   try {
     // Validate inputs
     if (!businessId || !serviceId || !dateStr) {
@@ -269,25 +417,70 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     const serviceData = service[0];
     const serviceDuration = serviceData.duration; // in minutes
 
-    // Get working hours for this date
-    const workingHours = await getWorkingHoursForDate(businessId, dateStr);
+    // Employee-specific data
+    let employeeData = null;
+    let employeeAtCapacity = false;
+
+    if (employeeId) {
+      // Verify employee exists and is active
+      const employee = await db.select().from(employees)
+        .where(and(
+          eq(employees.id, employeeId),
+          eq(employees.businessId, businessId),
+          eq(employees.isActive, true)
+        ))
+        .limit(1);
+
+      if (!employee.length) {
+        return {
+          date: dateStr,
+          available: false,
+          reason: 'Employee not found or inactive',
+          slots: []
+        };
+      }
+
+      employeeData = employee[0];
+
+      // Check if employee has reached maxDailyAppointments limit
+      if (employeeData.maxDailyAppointments > 0) {
+        const dailyCount = await getEmployeeDailyAppointmentCount(employeeId, dateStr, excludeAppointmentId);
+        if (dailyCount >= employeeData.maxDailyAppointments) {
+          employeeAtCapacity = true;
+        }
+      }
+    }
+
+    // Get working hours for this date (employee-specific or business default)
+    let workingHours;
+    if (employeeId) {
+      workingHours = await getEmployeeWorkingHoursForDate(employeeId, businessId, dateStr);
+    } else {
+      workingHours = await getWorkingHoursForDate(businessId, dateStr);
+    }
 
     if (!workingHours) {
       return {
         date: dateStr,
         available: false,
-        reason: 'Business is closed on this date',
-        slots: []
+        reason: employeeId ? 'Employee is not available on this date' : 'Business is closed on this date',
+        slots: [],
+        employee: employeeData ? { id: employeeData.id, name: employeeData.name } : null
       };
     }
 
-    // Get breaks (only for non-special dates)
-    const breakPeriods = workingHours.isSpecialDate
-      ? []
-      : await getBreaksForAvailability(workingHours.availabilityId);
+    // Get breaks (employee-specific or business default)
+    let breakPeriods = [];
+    if (!workingHours.isSpecialDate) {
+      if (workingHours.isEmployeeSchedule && workingHours.availabilityId) {
+        breakPeriods = await getEmployeeBreaksForAvailability(workingHours.availabilityId);
+      } else if (workingHours.availabilityId) {
+        breakPeriods = await getBreaksForAvailability(workingHours.availabilityId);
+      }
+    }
 
-    // Get existing appointments
-    const existingAppointments = await getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId);
+    // Get existing appointments (filtered by employee if specified)
+    const existingAppointments = await getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId, employeeId);
 
     // Determine capacity (use ?? instead of || to allow 0 for unlimited)
     const capacity = workingHours.capacityOverride ?? businessData.defaultCapacity ?? 1;
@@ -419,10 +612,18 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       }
     }
 
+    // If employee is at their daily capacity limit, mark all slots as unavailable
+    if (employeeAtCapacity) {
+      allSlots.forEach(slot => {
+        slot.available = false;
+        slot.reason = 'Employee has reached daily appointment limit';
+      });
+    }
+
     // Separate available and unavailable slots
     const availableSlots = allSlots.filter(slot => slot.available);
 
-    return {
+    const result = {
       date: dateStr,
       available: availableSlots.length > 0,
       workingHours: {
@@ -444,6 +645,18 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       availableSlotsCount: availableSlots.length
     };
 
+    // Include employee info if specified
+    if (employeeData) {
+      result.employee = {
+        id: employeeData.id,
+        name: employeeData.name,
+        maxDailyAppointments: employeeData.maxDailyAppointments,
+        atCapacity: employeeAtCapacity
+      };
+    }
+
+    return result;
+
   } catch (error) {
     console.error('Slot calculation error:', error);
     throw error;
@@ -458,9 +671,10 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
  * @param {string} startDate - Start date in YYYY-MM-DD format
  * @param {string} endDate - End date in YYYY-MM-DD format
  * @param {boolean} allowPastSlots - If true, includes past time slots (for admin/business users)
+ * @param {Object} options - Additional options (e.g., employeeId)
  * @returns {Promise<Array>} Array of date objects with availability
  */
-export async function calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate, allowPastSlots = false) {
+export async function calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate, allowPastSlots = false, options = {}) {
   const results = [];
 
   // Parse dates as UTC to avoid timezone issues
@@ -482,7 +696,7 @@ export async function calculateAvailableSlotsForRange(businessId, serviceId, sta
     const day = String(currentDate.getUTCDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
 
-    const slots = await calculateAvailableSlots(businessId, serviceId, dateStr, null, allowPastSlots);
+    const slots = await calculateAvailableSlots(businessId, serviceId, dateStr, null, allowPastSlots, options);
     results.push(slots);
 
     currentDate.setUTCDate(currentDate.getUTCDate() + 1);
@@ -496,5 +710,9 @@ export default {
   calculateAvailableSlotsForRange,
   getWorkingHoursForDate,
   getBreaksForAvailability,
-  getExistingAppointments
+  getExistingAppointments,
+  getEmployeeWorkingHoursForDate,
+  getEmployeeBreaksForAvailability,
+  getEmployeeDailyAppointmentCount,
+  getEmployeesForService
 };

@@ -5,6 +5,7 @@ import {
   getPopularDays,
   getPopularTimeSlots,
   getServicePerformance,
+  getEmployeePerformance,
   exportAnalytics
 } from '../controllers/analyticsController.js';
 import { protect } from '../middleware/auth.js';
@@ -55,6 +56,14 @@ router.get('/analytics/popular-times', protect, getPopularTimeSlots);
  * @query   ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
  */
 router.get('/analytics/services', protect, getServicePerformance);
+
+/**
+ * @route   GET /api/analytics/employees
+ * @desc    Get employee performance analytics
+ * @access  Private (Business Owner)
+ * @query   ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ */
+router.get('/analytics/employees', protect, getEmployeePerformance);
 
 /**
  * @route   GET /api/analytics/export

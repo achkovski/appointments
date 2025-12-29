@@ -35,26 +35,32 @@ import CreateAppointmentDialog from '../../components/appointments/CreateAppoint
 import StatusBadge from '../../components/appointments/StatusBadge';
 import { useBusiness } from '../../context/BusinessContext';
 import { getAppointments } from '../../services/appointmentsService';
+import { getEmployees } from '../../services/employeesService';
 
 const Appointments = () => {
   const navigate = useNavigate();
   const { business, loading: businessLoading } = useBusiness();
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [activeFilter, setActiveFilter] = useState('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
   const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedEmployee, setSelectedEmployee] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const itemsPerPage = 25;
 
-  // Fetch appointments when business is loaded
+  // Fetch appointments and employees when business is loaded
   useEffect(() => {
     if (business?.id) {
       fetchAppointments();
+      if (business?.settings?.allowEmployeeBooking) {
+        fetchEmployees();
+      }
     }
   }, [business]);
 
@@ -72,6 +78,15 @@ const Appointments = () => {
       setError(err.response?.data?.message || 'Failed to load appointments');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await getEmployees(business.id);
+      setEmployees(response.employees || []);
+    } catch (err) {
+      console.error('Error fetching employees:', err);
     }
   };
 
@@ -138,9 +153,18 @@ const Appointments = () => {
       );
     }
 
+    // Apply employee filter
+    if (selectedEmployee) {
+      if (selectedEmployee === 'unassigned') {
+        filtered = filtered.filter((apt) => !apt.employeeId);
+      } else {
+        filtered = filtered.filter((apt) => apt.employeeId === selectedEmployee);
+      }
+    }
+
     setFilteredAppointments(filtered);
     setCurrentPage(1);
-  }, [activeFilter, searchQuery, appointments, showTodayOnly, selectedDate]);
+  }, [activeFilter, searchQuery, appointments, showTodayOnly, selectedDate, selectedEmployee]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
@@ -321,6 +345,37 @@ const Appointments = () => {
               </Button>
             )}
           </div>
+
+          {/* Employee Filter - Only show if employee booking is enabled */}
+          {business?.settings?.allowEmployeeBooking && employees.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="employee-filter" className="text-sm font-medium whitespace-nowrap">
+                Staff:
+              </label>
+              <select
+                id="employee-filter"
+                value={selectedEmployee}
+                onChange={(e) => setSelectedEmployee(e.target.value)}
+                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">All staff</option>
+                <option value="unassigned">Unassigned</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.name}</option>
+                ))}
+              </select>
+              {selectedEmployee && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedEmployee('')}
+                  className="h-10"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -389,6 +444,11 @@ const Appointments = () => {
                       <TableCell>
                         <div>
                           <p className="font-medium">{appointment.service?.name || appointment.serviceName || 'N/A'}</p>
+                          {appointment.employee && (
+                            <p className="text-sm text-muted-foreground">
+                              with {appointment.employee.name}
+                            </p>
+                          )}
                           {appointment.notes && (
                             <p className="text-sm text-muted-foreground line-clamp-1">
                               {appointment.notes}

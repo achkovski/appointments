@@ -1,5 +1,5 @@
 import { pgTable, varchar, timestamp, text, integer, uniqueIndex, boolean, index, foreignKey, jsonb, numeric, date, time, pgEnum } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
+import { sql, relations } from "drizzle-orm"
 
 export const appointmentStatus = pgEnum("AppointmentStatus", ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'])
 export const capacityMode = pgEnum("CapacityMode", ['SINGLE', 'MULTIPLE'])
@@ -332,3 +332,127 @@ export const employeeSpecialDates = pgTable("employee_special_dates", {
 			name: "employee_special_dates_employee_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
 ]);
+
+// Define Drizzle relations for query builder
+
+// Employee relations
+export const employeesRelations = relations(employees, ({ one, many }) => ({
+	business: one(businesses, {
+		fields: [employees.businessId],
+		references: [businesses.id],
+	}),
+	employeeServices: many(employeeServices),
+	employeeAvailability: many(employeeAvailability),
+	employeeSpecialDates: many(employeeSpecialDates),
+	appointments: many(appointments),
+}));
+
+// Employee Services (junction table) relations
+export const employeeServicesRelations = relations(employeeServices, ({ one }) => ({
+	employee: one(employees, {
+		fields: [employeeServices.employeeId],
+		references: [employees.id],
+	}),
+	service: one(services, {
+		fields: [employeeServices.serviceId],
+		references: [services.id],
+	}),
+}));
+
+// Services relations
+export const servicesRelations = relations(services, ({ one, many }) => ({
+	business: one(businesses, {
+		fields: [services.businessId],
+		references: [businesses.id],
+	}),
+	employeeServices: many(employeeServices),
+	appointments: many(appointments),
+}));
+
+// Businesses relations
+export const businessesRelations = relations(businesses, ({ one, many }) => ({
+	owner: one(users, {
+		fields: [businesses.ownerId],
+		references: [users.id],
+	}),
+	employees: many(employees),
+	services: many(services),
+	appointments: many(appointments),
+	availability: many(availability),
+	specialDates: many(specialDates),
+}));
+
+// Appointments relations
+export const appointmentsRelations = relations(appointments, ({ one }) => ({
+	business: one(businesses, {
+		fields: [appointments.businessId],
+		references: [businesses.id],
+	}),
+	service: one(services, {
+		fields: [appointments.serviceId],
+		references: [services.id],
+	}),
+	employee: one(employees, {
+		fields: [appointments.employeeId],
+		references: [employees.id],
+	}),
+	client: one(users, {
+		fields: [appointments.clientUserId],
+		references: [users.id],
+	}),
+}));
+
+// Employee Availability relations
+export const employeeAvailabilityRelations = relations(employeeAvailability, ({ one, many }) => ({
+	employee: one(employees, {
+		fields: [employeeAvailability.employeeId],
+		references: [employees.id],
+	}),
+	breaks: many(employeeBreaks),
+}));
+
+// Employee Breaks relations
+export const employeeBreaksRelations = relations(employeeBreaks, ({ one }) => ({
+	employeeAvailability: one(employeeAvailability, {
+		fields: [employeeBreaks.employeeAvailabilityId],
+		references: [employeeAvailability.id],
+	}),
+}));
+
+// Employee Special Dates relations
+export const employeeSpecialDatesRelations = relations(employeeSpecialDates, ({ one }) => ({
+	employee: one(employees, {
+		fields: [employeeSpecialDates.employeeId],
+		references: [employees.id],
+	}),
+}));
+
+// Availability relations
+export const availabilityRelations = relations(availability, ({ one, many }) => ({
+	business: one(businesses, {
+		fields: [availability.businessId],
+		references: [businesses.id],
+	}),
+	breaks: many(breaks),
+}));
+
+// Breaks relations
+export const breaksRelations = relations(breaks, ({ one }) => ({
+	availability: one(availability, {
+		fields: [breaks.availabilityId],
+		references: [availability.id],
+	}),
+}));
+
+// Special Dates relations
+export const specialDatesRelations = relations(specialDates, ({ one }) => ({
+	business: one(businesses, {
+		fields: [specialDates.businessId],
+		references: [businesses.id],
+	}),
+}));
+
+// Users relations
+export const usersRelations = relations(users, ({ many }) => ({
+	businesses: many(businesses),
+}));

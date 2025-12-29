@@ -63,7 +63,7 @@ const Register = () => {
 
     try {
       setLoading(true);
-      const { confirmPassword, ...registerData } = formData;
+      const { confirmPassword: _unused, ...registerData } = formData;
       await register(registerData);
       navigate('/dashboard');
     } catch (err) {

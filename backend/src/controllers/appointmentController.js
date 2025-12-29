@@ -1,5 +1,5 @@
 import db from '../config/database.js';
-import { appointments, businesses, services, users } from '../config/schema.js';
+import { appointments, businesses, services, users, employees, employeeServices } from '../config/schema.js';
 import { eq, and, gte, lte, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { calculateAvailableSlots } from '../services/slotCalculator.js';
@@ -35,7 +35,8 @@ export const createGuestAppointment = async (req, res) => {
       clientLastName,
       clientEmail,
       clientPhone,
-      clientNotes
+      clientNotes,
+      employeeId
     } = req.body;
 
     // Validate required fields
@@ -146,9 +147,46 @@ export const createGuestAppointment = async (req, res) => {
 
     const serviceData = service[0];
 
+    // Validate employee if specified
+    let employeeData = null;
+    if (employeeId) {
+      const employee = await db.select().from(employees)
+        .where(and(
+          eq(employees.id, employeeId),
+          eq(employees.businessId, businessData.id),
+          eq(employees.isActive, true)
+        ))
+        .limit(1);
+
+      if (!employee.length) {
+        return res.status(404).json({
+          success: false,
+          message: 'Employee not found or inactive'
+        });
+      }
+
+      employeeData = employee[0];
+
+      // Verify employee is assigned to this service
+      const assignment = await db.select().from(employeeServices)
+        .where(and(
+          eq(employeeServices.employeeId, employeeId),
+          eq(employeeServices.serviceId, serviceId)
+        ))
+        .limit(1);
+
+      if (!assignment.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected employee is not assigned to this service'
+        });
+      }
+    }
+
     // Calculate available slots for the requested date
     // Allow past slots for business users (they can add appointments made by phone)
-    const slotsData = await calculateAvailableSlots(businessData.id, serviceId, appointmentDate, null, true);
+    const options = employeeId ? { employeeId } : {};
+    const slotsData = await calculateAvailableSlots(businessData.id, serviceId, appointmentDate, null, true, options);
 
     if (!slotsData.available) {
       return res.status(400).json({
@@ -206,6 +244,7 @@ export const createGuestAppointment = async (req, res) => {
       id: randomUUID(),
       businessId: businessData.id,
       serviceId: serviceData.id,
+      employeeId: employeeId || null,
       clientUserId: null, // Guest booking
       clientFirstName,
       clientLastName,

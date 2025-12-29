@@ -8,6 +8,7 @@ import {
   getPopularDays,
   getPopularTimeSlots,
   getServicePerformance,
+  getEmployeePerformance,
   exportAnalytics,
   downloadCSV
 } from '../../services/analyticsService';
@@ -53,6 +54,7 @@ const Analytics = () => {
   const [popularDays, setPopularDays] = useState([]);
   const [popularTimes, setPopularTimes] = useState([]);
   const [serviceStats, setServiceStats] = useState([]);
+  const [employeeStats, setEmployeeStats] = useState([]);
   const [mostPopularDay, setMostPopularDay] = useState('N/A');
   const [peakHour, setPeakHour] = useState('N/A');
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -85,12 +87,13 @@ const Analytics = () => {
       };
 
       // Fetch all data in parallel
-      const [overviewRes, trendsRes, daysRes, timesRes, servicesRes] = await Promise.all([
+      const [overviewRes, trendsRes, daysRes, timesRes, servicesRes, employeesRes] = await Promise.all([
         getAnalyticsOverview(params),
         getBookingTrends({ ...params, groupBy }),
         getPopularDays(params),
         getPopularTimeSlots(params),
-        getServicePerformance(params)
+        getServicePerformance(params),
+        getEmployeePerformance(params)
       ]);
 
       // Set overview data
@@ -119,6 +122,11 @@ const Analytics = () => {
       if (servicesRes.success) {
         setServiceStats(servicesRes.data.serviceStats);
         setTotalRevenue(servicesRes.data.totalRevenue);
+      }
+
+      // Set employee performance data
+      if (employeesRes.success) {
+        setEmployeeStats(employeesRes.data.employeeStats);
       }
     } catch (err) {
       console.error('Error fetching analytics:', err);
@@ -578,6 +586,70 @@ const Analytics = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Employee Performance Table */}
+      {employeeStats.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Employee Performance
+            </CardTitle>
+            <CardDescription>Booking statistics by employee</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium">Employee</th>
+                    <th className="text-right py-3 px-4 font-medium">Total</th>
+                    <th className="text-right py-3 px-4 font-medium">Completed</th>
+                    <th className="text-right py-3 px-4 font-medium">Cancelled</th>
+                    <th className="text-right py-3 px-4 font-medium">No-Shows</th>
+                    <th className="text-right py-3 px-4 font-medium">Completion %</th>
+                    <th className="text-right py-3 px-4 font-medium">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employeeStats.map((employee, index) => (
+                    <tr key={employee.employeeId || index} className="border-b last:border-0">
+                      <td className="py-3 px-4">{employee.employeeName}</td>
+                      <td className="text-right py-3 px-4">{employee.totalBookings}</td>
+                      <td className="text-right py-3 px-4 text-green-600">{employee.completedBookings}</td>
+                      <td className="text-right py-3 px-4 text-red-600">{employee.cancelledBookings}</td>
+                      <td className="text-right py-3 px-4 text-yellow-600">{employee.noShowBookings}</td>
+                      <td className="text-right py-3 px-4">{employee.completionRate}%</td>
+                      <td className="text-right py-3 px-4 font-medium">{formatCurrency(employee.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/50">
+                    <td className="py-3 px-4 font-medium">Total</td>
+                    <td className="text-right py-3 px-4 font-medium">
+                      {employeeStats.reduce((sum, e) => sum + e.totalBookings, 0)}
+                    </td>
+                    <td className="text-right py-3 px-4 font-medium text-green-600">
+                      {employeeStats.reduce((sum, e) => sum + e.completedBookings, 0)}
+                    </td>
+                    <td className="text-right py-3 px-4 font-medium text-red-600">
+                      {employeeStats.reduce((sum, e) => sum + e.cancelledBookings, 0)}
+                    </td>
+                    <td className="text-right py-3 px-4 font-medium text-yellow-600">
+                      {employeeStats.reduce((sum, e) => sum + e.noShowBookings, 0)}
+                    </td>
+                    <td className="text-right py-3 px-4 font-medium">-</td>
+                    <td className="text-right py-3 px-4 font-bold">
+                      {formatCurrency(employeeStats.reduce((sum, e) => sum + e.revenue, 0))}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

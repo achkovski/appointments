@@ -21,18 +21,33 @@ export const getBusinessBySlug = async (slug) => {
 };
 
 /**
+ * Get employees available for a specific service
+ * @param {string} serviceId - Service ID
+ * @returns {Promise} Employee data with employeeBookingEnabled flag
+ */
+export const getEmployeesForService = async (serviceId) => {
+  const response = await publicApi.get(`/service/${serviceId}/employees`);
+  return response.data;
+};
+
+/**
  * Get available time slots for a specific date and service
  * @param {string} businessSlug - Business slug
  * @param {string} serviceId - Service ID
  * @param {string} date - Date in YYYY-MM-DD format
+ * @param {string} employeeId - Optional employee ID
  * @returns {Promise} Available slots data
  */
-export const getAvailableSlots = async (businessSlug, serviceId, date) => {
-  const response = await publicApi.post('/available-slots', {
+export const getAvailableSlots = async (businessSlug, serviceId, date, employeeId = null) => {
+  const payload = {
     businessSlug,
     serviceId,
     date,
-  });
+  };
+  if (employeeId) {
+    payload.employeeId = employeeId;
+  }
+  const response = await publicApi.post('/available-slots', payload);
   return response.data;
 };
 
@@ -92,6 +107,7 @@ export const cancelAppointment = async (appointmentId, email, cancellationReason
 
 export default {
   getBusinessBySlug,
+  getEmployeesForService,
   getAvailableSlots,
   getAvailableSlotsRange,
   createBooking,

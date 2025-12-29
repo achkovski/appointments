@@ -11,6 +11,7 @@ import {
   Clock,
   LogOut,
   User,
+  Users,
   Briefcase,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -117,6 +118,11 @@ const DashboardLayout = () => {
       name: 'Services',
       href: '/dashboard/services',
       icon: Briefcase,
+    },
+    {
+      name: 'Employees',
+      href: '/dashboard/employees',
+      icon: Users,
     },
     {
       name: 'Availability',

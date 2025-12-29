@@ -14,6 +14,7 @@ import { useToast } from '../hooks/use-toast';
 import {
   getBusinessBySlug,
   getAvailableSlots,
+  getEmployeesForService,
   createBooking,
 } from '../services/publicBookingService';
 import {
@@ -21,6 +22,7 @@ import {
   DollarSign,
   Calendar as CalendarIcon,
   User,
+  Users,
   Mail,
   Phone,
   MessageSquare,
@@ -34,11 +36,12 @@ import {
 
 const STEPS = {
   SELECT_SERVICE: 1,
-  SELECT_DATE: 2,
-  SELECT_TIME: 3,
-  CLIENT_INFO: 4,
-  CONFIRM: 5,
-  SUCCESS: 6,
+  SELECT_EMPLOYEE: 2,
+  SELECT_DATE: 3,
+  SELECT_TIME: 4,
+  CLIENT_INFO: 5,
+  CONFIRM: 6,
+  SUCCESS: 7,
 };
 
 const BookingPage = () => {
@@ -49,11 +52,13 @@ const BookingPage = () => {
   // Data state
   const [business, setBusiness] = useState(null);
   const [services, setServices] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [availableSlots, setAvailableSlots] = useState([]);
 
   // Selection state
   const [currentStep, setCurrentStep] = useState(STEPS.SELECT_SERVICE);
   const [selectedService, setSelectedService] = useState(null);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
 
@@ -68,6 +73,7 @@ const BookingPage = () => {
 
   // Loading and error state
   const [loading, setLoading] = useState(true);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -111,7 +117,8 @@ const BookingPage = () => {
       try {
         setSlotsLoading(true);
         const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-        const response = await getAvailableSlots(slug, selectedService.id, formattedDate);
+        const employeeId = selectedEmployee?.id || null;
+        const response = await getAvailableSlots(slug, selectedService.id, formattedDate, employeeId);
 
         if (response.success) {
           setAvailableSlots(response.data.slots || []);
@@ -137,10 +144,44 @@ const BookingPage = () => {
     };
 
     fetchSlots();
-  }, [selectedDate, selectedService, slug, toast]);
+  }, [selectedDate, selectedService, selectedEmployee, slug, toast]);
 
-  const handleServiceSelect = (service) => {
+  const handleServiceSelect = async (service) => {
     setSelectedService(service);
+    setSelectedEmployee(null);
+
+    try {
+      setEmployeesLoading(true);
+      const response = await getEmployeesForService(service.id);
+
+      if (response.success) {
+        setEmployees(response.data.employees || []);
+
+        // Skip employee selection if not enabled or no employees
+        if (!response.data.employeeBookingEnabled || response.data.employees.length === 0) {
+          setCurrentStep(STEPS.SELECT_DATE);
+        } else {
+          setCurrentStep(STEPS.SELECT_EMPLOYEE);
+        }
+      } else {
+        setCurrentStep(STEPS.SELECT_DATE);
+      }
+    } catch (err) {
+      console.error('Error fetching employees:', err);
+      // If error, skip employee selection
+      setCurrentStep(STEPS.SELECT_DATE);
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
+  const handleEmployeeSelect = (employee) => {
+    setSelectedEmployee(employee);
+    setCurrentStep(STEPS.SELECT_DATE);
+  };
+
+  const handleSkipEmployeeSelection = () => {
+    setSelectedEmployee(null);
     setCurrentStep(STEPS.SELECT_DATE);
   };
 
@@ -208,6 +249,7 @@ const BookingPage = () => {
       const bookingData = {
         businessSlug: slug,
         serviceId: selectedService.id,
+        employeeId: selectedEmployee?.id || undefined,
         appointmentDate: format(selectedDate, 'yyyy-MM-dd'),
         startTime: selectedTimeSlot.startTime,
         clientFirstName: clientInfo.firstName.trim(),
@@ -249,10 +291,12 @@ const BookingPage = () => {
   const handleStartOver = () => {
     setCurrentStep(STEPS.SELECT_SERVICE);
     setSelectedService(null);
+    setSelectedEmployee(null);
     setSelectedDate(null);
     setSelectedTimeSlot(null);
     setClientInfo({ firstName: '', lastName: '', email: '', phone: '', notes: '' });
     setBookingResult(null);
+    setEmployees([]);
   };
 
   if (loading) {
@@ -328,10 +372,10 @@ const BookingPage = () => {
         {/* Progress Indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
-            {[1, 2, 3, 4, 5].map((step) => (
+            {[1, 2, 3, 4, 5, 6].map((step) => (
               <div key={step} className="flex items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                     step < currentStep
                       ? 'bg-green-500 text-white'
                       : step === currentStep
@@ -341,9 +385,9 @@ const BookingPage = () => {
                 >
                   {step < currentStep ? '✓' : step}
                 </div>
-                {step < 5 && (
+                {step < 6 && (
                   <div
-                    className={`h-1 w-12 md:w-24 ${
+                    className={`h-1 w-8 md:w-16 ${
                       step < currentStep ? 'bg-green-500' : 'bg-gray-300'
                     }`}
                   />
@@ -353,6 +397,7 @@ const BookingPage = () => {
           </div>
           <div className="flex justify-between mt-2 text-xs text-gray-600">
             <span>Service</span>
+            <span>Staff</span>
             <span>Date</span>
             <span>Time</span>
             <span>Info</span>
@@ -409,7 +454,75 @@ const BookingPage = () => {
           </div>
         )}
 
-        {/* Step 2: Date Selection */}
+        {/* Step 2: Employee Selection */}
+        {currentStep === STEPS.SELECT_EMPLOYEE && (
+          <div>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold">Choose a Staff Member</h2>
+                <p className="text-gray-600 mt-1">
+                  Service: <span className="font-medium">{selectedService?.name}</span>
+                </p>
+              </div>
+              <Button variant="outline" onClick={handleGoBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </div>
+            {employeesLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Any Available Option */}
+                <Card
+                  className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-dashed"
+                  onClick={handleSkipEmployeeSelection}
+                >
+                  <CardContent className="py-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-gray-500" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold">Any Available</h3>
+                        <p className="text-sm text-gray-600">
+                          Book with the first available staff member
+                        </p>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-gray-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Employee Options */}
+                {employees.map((employee) => (
+                  <Card
+                    key={employee.id}
+                    className="cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => handleEmployeeSelect(employee)}
+                  >
+                    <CardContent className="py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{employee.name}</h3>
+                        </div>
+                        <ArrowRight className="h-5 w-5 text-gray-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Date Selection */}
         {currentStep === STEPS.SELECT_DATE && (
           <div>
             <div className="mb-4 flex items-center justify-between">
@@ -417,6 +530,9 @@ const BookingPage = () => {
                 <h2 className="text-2xl font-semibold">Select a Date</h2>
                 <p className="text-gray-600 mt-1">
                   Service: <span className="font-medium">{selectedService?.name}</span>
+                  {selectedEmployee && (
+                    <> with <span className="font-medium">{selectedEmployee.name}</span></>
+                  )}
                 </p>
               </div>
               <Button variant="outline" onClick={handleGoBack}>
@@ -438,14 +554,16 @@ const BookingPage = () => {
           </div>
         )}
 
-        {/* Step 3: Time Selection */}
+        {/* Step 4: Time Selection */}
         {currentStep === STEPS.SELECT_TIME && (
           <div>
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">Select a Time</h2>
                 <p className="text-gray-600 mt-1">
-                  {selectedService?.name} on {selectedDate && format(selectedDate, 'MMMM d, yyyy')}
+                  {selectedService?.name}
+                  {selectedEmployee && <> with {selectedEmployee.name}</>}
+                  {' '}on {selectedDate && format(selectedDate, 'MMMM d, yyyy')}
                 </p>
               </div>
               <Button variant="outline" onClick={handleGoBack}>
@@ -496,7 +614,7 @@ const BookingPage = () => {
           </div>
         )}
 
-        {/* Step 4: Client Information */}
+        {/* Step 5: Client Information */}
         {currentStep === STEPS.CLIENT_INFO && (
           <div>
             <div className="mb-4 flex items-center justify-between">
@@ -575,7 +693,7 @@ const BookingPage = () => {
           </div>
         )}
 
-        {/* Step 5: Confirmation */}
+        {/* Step 6: Confirmation */}
         {currentStep === STEPS.CONFIRM && (
           <div>
             <div className="mb-4 flex items-center justify-between">
@@ -609,6 +727,15 @@ const BookingPage = () => {
                     {selectedService?.price && ` • Price: $${selectedService.price}`}
                   </p>
                 </div>
+                {selectedEmployee && (
+                  <div>
+                    <h3 className="font-semibold mb-2 flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Staff Member
+                    </h3>
+                    <p className="text-gray-700">{selectedEmployee.name}</p>
+                  </div>
+                )}
                 <div>
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
                     <CalendarIcon className="h-4 w-4" />
@@ -652,7 +779,7 @@ const BookingPage = () => {
           </div>
         )}
 
-        {/* Step 6: Success */}
+        {/* Step 7: Success */}
         {currentStep === STEPS.SUCCESS && (
           <div>
             <Card>
@@ -704,6 +831,11 @@ const BookingPage = () => {
                     <p>
                       <span className="font-medium">Service:</span> {selectedService?.name}
                     </p>
+                    {selectedEmployee && (
+                      <p>
+                        <span className="font-medium">Staff:</span> {selectedEmployee.name}
+                      </p>
+                    )}
                     <p>
                       <span className="font-medium">Date:</span>{' '}
                       {selectedDate && format(selectedDate, 'MMMM d, yyyy')}

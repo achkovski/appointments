@@ -1,5 +1,5 @@
 import db from '../config/database.js';
-import { appointments, services, businesses } from '../config/schema.js';
+import { appointments, services, businesses, employees } from '../config/schema.js';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
 
 // Helper function to get business ID for current user
@@ -428,6 +428,133 @@ export const getServicePerformance = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch service performance',
+      error: error.message,
+    });
+  }
+};
+
+// Get employee performance
+export const getEmployeePerformance = async (req, res) => {
+  try {
+    const businessId = await getBusinessIdForUser(req.user.id);
+
+    if (!businessId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found for this user',
+      });
+    }
+
+    const { startDate, endDate } = req.query;
+
+    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
+    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    // Get all employees
+    const allEmployees = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.businessId, businessId));
+
+    // Get appointments with employee info
+    const appointmentData = await db
+      .select({
+        employeeId: appointments.employeeId,
+        status: appointments.status,
+        serviceId: appointments.serviceId,
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.businessId, businessId),
+          gte(appointments.appointmentDate, start),
+          lte(appointments.appointmentDate, end)
+        )
+      );
+
+    // Get services for price lookup
+    const allServices = await db
+      .select()
+      .from(services)
+      .where(eq(services.businessId, businessId));
+
+    const serviceMap = {};
+    allServices.forEach(s => {
+      serviceMap[s.id] = s;
+    });
+
+    // Calculate stats per employee
+    const employeeStats = allEmployees.map(employee => {
+      const employeeAppointments = appointmentData.filter(a => a.employeeId === employee.id);
+      const total = employeeAppointments.length;
+      const completed = employeeAppointments.filter(a => a.status === 'COMPLETED').length;
+      const cancelled = employeeAppointments.filter(a => a.status === 'CANCELLED').length;
+      const noShow = employeeAppointments.filter(a => a.status === 'NO_SHOW').length;
+      const pending = employeeAppointments.filter(a => a.status === 'PENDING').length;
+      const confirmed = employeeAppointments.filter(a => a.status === 'CONFIRMED').length;
+
+      // Calculate revenue from completed appointments
+      const revenue = employeeAppointments
+        .filter(a => a.status === 'COMPLETED')
+        .reduce((sum, a) => {
+          const service = serviceMap[a.serviceId];
+          return sum + (parseFloat(service?.price) || 0);
+        }, 0);
+
+      return {
+        employeeId: employee.id,
+        employeeName: employee.name,
+        isActive: employee.isActive,
+        totalBookings: total,
+        completedBookings: completed,
+        cancelledBookings: cancelled,
+        noShowBookings: noShow,
+        pendingBookings: pending,
+        confirmedBookings: confirmed,
+        completionRate: total > 0 ? ((completed / total) * 100).toFixed(1) : 0,
+        cancellationRate: total > 0 ? ((cancelled / total) * 100).toFixed(1) : 0,
+        noShowRate: total > 0 ? ((noShow / total) * 100).toFixed(1) : 0,
+        revenue,
+      };
+    });
+
+    // Also calculate "unassigned" stats
+    const unassignedAppointments = appointmentData.filter(a => !a.employeeId);
+    const unassignedTotal = unassignedAppointments.length;
+    const unassignedCompleted = unassignedAppointments.filter(a => a.status === 'COMPLETED').length;
+    const unassignedRevenue = unassignedAppointments
+      .filter(a => a.status === 'COMPLETED')
+      .reduce((sum, a) => {
+        const service = serviceMap[a.serviceId];
+        return sum + (parseFloat(service?.price) || 0);
+      }, 0);
+
+    // Sort by total bookings
+    const sortedEmployees = employeeStats.sort((a, b) => b.totalBookings - a.totalBookings);
+    const totalRevenue = employeeStats.reduce((sum, e) => sum + e.revenue, 0) + unassignedRevenue;
+
+    res.json({
+      success: true,
+      data: {
+        employeeStats: sortedEmployees,
+        unassigned: {
+          totalBookings: unassignedTotal,
+          completedBookings: unassignedCompleted,
+          revenue: unassignedRevenue,
+        },
+        totalRevenue,
+        topPerformer: sortedEmployees[0]?.employeeName || 'N/A',
+        dateRange: {
+          start,
+          end,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching employee performance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch employee performance',
       error: error.message,
     });
   }

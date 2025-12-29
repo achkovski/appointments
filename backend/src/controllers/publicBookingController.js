@@ -77,11 +77,11 @@ export const getBusinessBySlug = async (req, res) => {
 /**
  * Get available slots for a specific date and service
  * POST /api/public/available-slots
- * Body: { businessSlug, serviceId, date }
+ * Body: { businessSlug, serviceId, date, employeeId (optional) }
  */
 export const getAvailableSlots = async (req, res) => {
   try {
-    const { businessSlug, serviceId, date } = req.body;
+    const { businessSlug, serviceId, date, employeeId } = req.body;
 
     // Validate required fields
     if (!businessSlug) {
@@ -144,7 +144,8 @@ export const getAvailableSlots = async (req, res) => {
     }
 
     // Calculate available slots (allowPastSlots=false for public bookings)
-    const slotsData = await calculateAvailableSlots(businessId, serviceId, date, null, false);
+    const options = employeeId ? { employeeId } : {};
+    const slotsData = await calculateAvailableSlots(businessId, serviceId, date, null, false, options);
 
     res.json({
       success: true,
@@ -164,11 +165,11 @@ export const getAvailableSlots = async (req, res) => {
 /**
  * Get available slots for a date range
  * POST /api/public/available-slots-range
- * Body: { businessSlug, serviceId, startDate, endDate }
+ * Body: { businessSlug, serviceId, startDate, endDate, employeeId (optional) }
  */
 export const getAvailableSlotsRange = async (req, res) => {
   try {
-    const { businessSlug, serviceId, startDate, endDate } = req.body;
+    const { businessSlug, serviceId, startDate, endDate, employeeId } = req.body;
 
     // Validate required fields
     if (!businessSlug) {
@@ -246,7 +247,8 @@ export const getAvailableSlotsRange = async (req, res) => {
     }
 
     // Calculate available slots for range (allowPastSlots=false for public bookings)
-    const slotsData = await calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate, false);
+    const options = employeeId ? { employeeId } : {};
+    const slotsData = await calculateAvailableSlotsForRange(businessId, serviceId, startDate, endDate, false, options);
 
     res.json({
       success: true,

@@ -104,7 +104,7 @@ const AppointmentDetail = () => {
         day: 'numeric',
         year: 'numeric',
       });
-    } catch (err) {
+    } catch {
       return 'Invalid Date';
     }
   };
@@ -119,7 +119,7 @@ const AppointmentDetail = () => {
         minute: '2-digit',
         hour12: true,
       });
-    } catch (err) {
+    } catch {
       return 'Invalid Time';
     }
   };
@@ -453,6 +453,23 @@ const AppointmentDetail = () => {
                 {appointment.service?.name || appointment.serviceName || 'N/A'}
               </p>
             </div>
+            {appointment.employee && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Staff Member</p>
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{appointment.employee.name}</span>
+                </div>
+              </div>
+            )}
+            {appointment.reassignmentNote && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Reassignment Note</p>
+                <p className="text-sm mt-1 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
+                  {appointment.reassignmentNote}
+                </p>
+              </div>
+            )}
             <div>
               <p className="text-sm font-medium text-muted-foreground">Date</p>
               <div className="flex items-center gap-2">

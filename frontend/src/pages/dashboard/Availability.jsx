@@ -29,9 +29,6 @@ import {
   createAvailability,
   updateAvailability,
   deleteAvailability,
-  getBreaks,
-  createBreak,
-  deleteBreak,
   getSpecialDates,
   createSpecialDate,
   updateSpecialDate,
@@ -310,10 +307,6 @@ const Availability = () => {
     setSelectedItem(item);
     setDeleteType(type);
     setShowDeleteDialog(true);
-  };
-
-  const getDayLabel = (dayOfWeek) => {
-    return DAYS_OF_WEEK.find(d => d.value === dayOfWeek)?.label || 'Unknown';
   };
 
   const formatDate = (dateString) => {

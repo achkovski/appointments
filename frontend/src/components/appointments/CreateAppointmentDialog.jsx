@@ -16,6 +16,7 @@ import { Loader2, AlertCircle, Clock } from 'lucide-react';
 import { getServices } from '../../services/servicesService';
 import { createAppointment } from '../../services/appointmentsService';
 import { getAvailability } from '../../services/availabilityService';
+import { getEmployeesByService } from '../../services/employeesService';
 import { useBusiness } from '../../context/BusinessContext';
 import { useToast } from '../../hooks/use-toast';
 
@@ -26,6 +27,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
   // Form state
   const [formData, setFormData] = useState({
     serviceId: '',
+    employeeId: '',
     appointmentDate: '',
     startHour: '',
     startMinute: '',
@@ -39,10 +41,12 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
 
   // UI state
   const [services, setServices] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [availability, setAvailability] = useState([]);
   const [workingHours, setWorkingHours] = useState(null);
   const [isNonWorkingDay, setIsNonWorkingDay] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -55,6 +59,16 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       fetchAvailability();
     }
   }, [open, businessId]);
+
+  // Fetch employees when service changes
+  useEffect(() => {
+    if (formData.serviceId && business?.settings?.allowEmployeeBooking) {
+      fetchEmployees(formData.serviceId);
+    } else {
+      setEmployees([]);
+      setFormData(prev => ({ ...prev, employeeId: '' }));
+    }
+  }, [formData.serviceId, business?.settings?.allowEmployeeBooking]);
 
   // Check working hours when date changes
   useEffect(() => {
@@ -105,6 +119,22 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       });
     } finally {
       setLoadingAvailability(false);
+    }
+  };
+
+  const fetchEmployees = async (serviceId) => {
+    setLoadingEmployees(true);
+    try {
+      const response = await getEmployeesByService(serviceId);
+      const employeesList = response.employees || [];
+      // Filter only active employees
+      const activeEmployees = employeesList.filter(e => e.isActive);
+      setEmployees(activeEmployees);
+    } catch (err) {
+      console.error('Error fetching employees:', err);
+      setEmployees([]);
+    } finally {
+      setLoadingEmployees(false);
     }
   };
 
@@ -259,6 +289,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       await createAppointment({
         businessId,
         serviceId: formData.serviceId,
+        employeeId: formData.employeeId || undefined,
         appointmentDate: formData.appointmentDate,
         startTime,
         endTime,
@@ -273,6 +304,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       // Reset form
       setFormData({
         serviceId: '',
+        employeeId: '',
         appointmentDate: '',
         startHour: '',
         startMinute: '',
@@ -283,6 +315,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
         notes: '',
         clientNotes: '',
       });
+      setEmployees([]);
       setOverrideWorkingHours(false);
 
       toast({
@@ -311,6 +344,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
   const handleClose = () => {
     setFormData({
       serviceId: '',
+      employeeId: '',
       appointmentDate: '',
       startHour: '',
       startMinute: '',
@@ -323,6 +357,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
     });
     setFieldErrors({});
     setError(null);
+    setEmployees([]);
     setOverrideWorkingHours(false);
     setIsNonWorkingDay(false);
     setWorkingHours(null);
@@ -377,6 +412,39 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
               <p className="text-sm text-destructive">{fieldErrors.serviceId}</p>
             )}
           </div>
+
+          {/* Employee Selection - Only show if employee booking is enabled */}
+          {business?.settings?.allowEmployeeBooking && formData.serviceId && (
+            <div className="space-y-2">
+              <Label htmlFor="employeeId">Staff Member (Optional)</Label>
+              {loadingEmployees ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading staff...
+                </div>
+              ) : (
+                <select
+                  id="employeeId"
+                  name="employeeId"
+                  value={formData.employeeId}
+                  onChange={handleChange}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">Any available</option>
+                  {employees.map(employee => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {employees.length === 0 && !loadingEmployees && (
+                <p className="text-xs text-muted-foreground">
+                  No staff members assigned to this service
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Date Selection */}
           <div className="space-y-2">
