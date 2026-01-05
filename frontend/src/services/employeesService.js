@@ -9,8 +9,8 @@ import api from './api';
  * @param {string} businessId - Business ID
  * @returns {Promise} - List of employees
  */
-export const getEmployees = async (businessId) => {
-  const response = await api.get(`/employees/business/${businessId}`);
+export const getEmployees = async (businessId, includeInactive = true) => {
+  const response = await api.get(`/employees/business/${businessId}?includeInactive=${includeInactive}`);
   return response.data;
 };
 

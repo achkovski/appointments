@@ -730,15 +730,17 @@ export const getAppointmentById = async (req, res) => {
     const { appointmentId } = req.params;
     const userId = req.user.id;
 
-    // Get appointment with service info
+    // Get appointment with service and employee info
     const appointment = await db.select({
       appointment: appointments,
       service: services,
-      business: businesses
+      business: businesses,
+      employee: employees
     })
       .from(appointments)
       .leftJoin(services, eq(appointments.serviceId, services.id))
       .leftJoin(businesses, eq(appointments.businessId, businesses.id))
+      .leftJoin(employees, eq(appointments.employeeId, employees.id))
       .where(eq(appointments.id, appointmentId))
       .limit(1);
 
@@ -749,7 +751,7 @@ export const getAppointmentById = async (req, res) => {
       });
     }
 
-    const { appointment: apt, service, business } = appointment[0];
+    const { appointment: apt, service, business, employee } = appointment[0];
 
     // Verify business ownership
     if (business.ownerId !== userId) {
@@ -766,7 +768,8 @@ export const getAppointmentById = async (req, res) => {
         serviceName: service?.name,
         serviceDuration: service?.duration,
         servicePrice: service?.price,
-        businessName: business?.businessName
+        businessName: business?.businessName,
+        employee: employee ? { id: employee.id, name: employee.name } : null
       }
     });
 

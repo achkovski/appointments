@@ -1,5 +1,5 @@
 import db from '../config/database.js';
-import { employeeAvailability, employeeBreaks, employeeSpecialDates, employees, businesses } from '../config/schema.js';
+import { employeeAvailability, employeeBreaks, employeeSpecialDates, employees, businesses, availability, breaks } from '../config/schema.js';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -289,13 +289,22 @@ export const copyBusinessAvailability = async (req, res) => {
 
     const { employee, business } = verification;
 
-    // Get business availability
-    const businessAvailability = await db.query.availability.findMany({
-      where: eq(db.query.availability.businessId, business.id),
-      with: {
-        breaks: true,
-      },
-    });
+    // Get business availability with breaks
+    const businessAvailabilityRules = await db.select().from(availability)
+      .where(eq(availability.businessId, business.id))
+      .orderBy(availability.dayOfWeek);
+
+    // Get breaks for each availability rule
+    const businessAvailability = await Promise.all(
+      businessAvailabilityRules.map(async (rule) => {
+        const ruleBreaks = await db.select().from(breaks)
+          .where(eq(breaks.availabilityId, rule.id));
+        return {
+          ...rule,
+          breaks: ruleBreaks
+        };
+      })
+    );
 
     // Delete existing employee availability
     await db.delete(employeeAvailability).where(eq(employeeAvailability.employeeId, employeeId));

@@ -103,8 +103,8 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
         getEmployeeAvailability(employee.id),
         getEmployeeSpecialDates(employee.id),
       ]);
-      setWorkingHours(availabilityResponse.availability || []);
-      setSpecialDates(specialDatesResponse.specialDates || []);
+      setWorkingHours(availabilityResponse.data || []);
+      setSpecialDates(specialDatesResponse.data || []);
     } catch (err) {
       console.error('Error fetching employee availability:', err);
       toast({
