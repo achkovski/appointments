@@ -596,7 +596,10 @@ const BookingPage = () => {
                         <div className="text-center">
                           <div className="font-semibold">{slot.startTime}</div>
                           <div className="text-xs text-gray-600">to {slot.endTime}</div>
-                          {!slot.available && (
+                          {!slot.available && slot.isPast && (
+                            <div className="text-xs text-gray-500 mt-1">Passed</div>
+                          )}
+                          {!slot.available && !slot.isPast && (
                             <div className="text-xs text-red-600 mt-1">Booked</div>
                           )}
                           {slot.available && slot.spotsLeft && slot.spotsLeft !== 'unlimited' && (

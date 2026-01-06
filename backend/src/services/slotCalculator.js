@@ -521,19 +521,17 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       const slotStart = currentTime;
       const slotEnd = currentTime + serviceDuration;
 
-      // For clients (allowPastSlots=false), skip past time slots for today
-      // For admins (allowPastSlots=true), include all time slots
-      const isPastSlot = isToday && slotEnd <= currentMinutes;
-      if (!allowPastSlots && isPastSlot) {
-        currentTime += slotInterval;
-        continue;
-      }
+      // Check if this is a past time slot (for today only)
+      // For admins (allowPastSlots=true), never mark as past
+      // For clients (allowPastSlots=false), mark past slots so they can be shown but disabled
+      const isPastSlot = !allowPastSlots && isToday && slotStart < currentMinutes;
 
       possibleSlots.push({
         start: minutesToTime(slotStart),
         end: minutesToTime(slotEnd),
         startMinutes: slotStart,
-        endMinutes: slotEnd
+        endMinutes: slotEnd,
+        isPast: isPastSlot
       });
 
       currentTime += slotInterval;
@@ -557,6 +555,17 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     const allSlots = [];
 
     for (const slot of slotsAfterBreaks) {
+      // If slot is in the past, mark as unavailable immediately
+      if (slot.isPast) {
+        allSlots.push({
+          startTime: slot.start,
+          endTime: slot.end,
+          available: false,
+          isPast: true
+        });
+        continue;
+      }
+
       if (capacityMode === 'SINGLE') {
         // In SINGLE mode, slot is available if no appointments overlap
         // Buffer time is added around existing appointments
@@ -579,7 +588,8 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
         allSlots.push({
           startTime: slot.start,
           endTime: slot.end,
-          available: !hasConflict
+          available: !hasConflict,
+          isPast: false
         });
       } else {
         // MULTIPLE mode: count overlapping appointments (with buffer)
@@ -607,7 +617,8 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
           endTime: slot.end,
           available: isAvailable,
           spotsLeft,
-          totalCapacity: capacity === 0 ? 'unlimited' : capacity
+          totalCapacity: capacity === 0 ? 'unlimited' : capacity,
+          isPast: false
         });
       }
     }
