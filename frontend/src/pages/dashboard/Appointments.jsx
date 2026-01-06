@@ -385,6 +385,12 @@ const Appointments = () => {
           <CardTitle>Appointment List</CardTitle>
           <CardDescription>
             {filteredAppointments.length} appointment{filteredAppointments.length !== 1 ? 's' : ''} found
+            {selectedEmployee && selectedEmployee !== 'unassigned' && (
+              <> for <span className="font-medium">{employees.find(e => e.id === selectedEmployee)?.name}</span></>
+            )}
+            {selectedEmployee === 'unassigned' && (
+              <> <span className="font-medium">(unassigned)</span></>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>

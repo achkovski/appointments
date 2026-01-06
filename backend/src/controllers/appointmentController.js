@@ -492,11 +492,12 @@ export const getBusinessAppointments = async (req, res) => {
       conditions.push(gte(appointments.appointmentDate, startDate));
     }
 
-    // Fetch appointments with service information
+    // Fetch appointments with service and employee information
     const appointmentsList = await db.select({
       id: appointments.id,
       businessId: appointments.businessId,
       serviceId: appointments.serviceId,
+      employeeId: appointments.employeeId,
       clientUserId: appointments.clientUserId,
       clientFirstName: appointments.clientFirstName,
       clientLastName: appointments.clientLastName,
@@ -514,17 +515,25 @@ export const getBusinessAppointments = async (req, res) => {
       updatedAt: appointments.updatedAt,
       serviceName: services.name,
       serviceDuration: services.duration,
-      servicePrice: services.price
+      servicePrice: services.price,
+      employeeName: employees.name
     })
       .from(appointments)
       .leftJoin(services, eq(appointments.serviceId, services.id))
+      .leftJoin(employees, eq(appointments.employeeId, employees.id))
       .where(and(...conditions))
       .orderBy(appointments.appointmentDate, appointments.startTime);
 
+    // Transform to include employee object for frontend compatibility
+    const transformedAppointments = appointmentsList.map(apt => ({
+      ...apt,
+      employee: apt.employeeId ? { id: apt.employeeId, name: apt.employeeName } : null
+    }));
+
     res.json({
       success: true,
-      data: appointmentsList,
-      total: appointmentsList.length
+      data: transformedAppointments,
+      total: transformedAppointments.length
     });
 
   } catch (error) {
