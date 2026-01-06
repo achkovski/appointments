@@ -904,6 +904,120 @@ export const sendBusinessAlertEmail = async (params) => {
   }
 };
 
+/**
+ * Send a custom contact email from business to client (sent via system on behalf of business)
+ * @param {Object} params - Email parameters
+ * @param {string} params.to - Client email
+ * @param {string} params.clientName - Client full name
+ * @param {string} params.businessName - Business name
+ * @param {string} params.businessEmail - Business reply-to email
+ * @param {string} params.subject - Email subject
+ * @param {string} params.message - Email message body
+ * @returns {Promise<void>}
+ */
+export const sendContactEmail = async (params) => {
+  const {
+    to,
+    clientName,
+    businessName,
+    businessEmail,
+    subject,
+    message
+  } = params;
+
+  const mailOptions = {
+    from: `"${businessName} via ${process.env.APP_NAME || 'Appointments App'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    replyTo: businessEmail,
+    to,
+    subject: subject,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
+            .message-box { background-color: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #4F46E5; white-space: pre-wrap; }
+            .reply-info { background-color: #DBEAFE; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Message from ${businessName}</h1>
+            </div>
+            <div class="content">
+              <p>Hello ${clientName},</p>
+              <p>You have received a message from <strong>${businessName}</strong>:</p>
+              <div class="message-box">${message.replace(/\n/g, '<br>')}</div>
+              <div class="reply-info">
+                <p><strong>To reply:</strong> Simply reply to this email and your message will be sent directly to ${businessName} at ${businessEmail}.</p>
+              </div>
+            </div>
+            <div class="footer">
+              <p>This message was sent via ${process.env.APP_NAME || 'Appointments App'} on behalf of ${businessName}.</p>
+              <p>&copy; ${new Date().getFullYear()} ${process.env.APP_NAME || 'Appointments App'}. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Message from ${businessName}
+
+Hello ${clientName},
+
+You have received a message from ${businessName}:
+
+---
+${message}
+---
+
+To reply: Simply reply to this email and your message will be sent directly to ${businessName} at ${businessEmail}.
+
+This message was sent via ${process.env.APP_NAME || 'Appointments App'} on behalf of ${businessName}.
+    `,
+  };
+
+  // Log email details for debugging
+  console.log('📧 [CONTACT EMAIL] Preparing to send:');
+  console.log('   To:', to);
+  console.log('   From:', mailOptions.from);
+  console.log('   Reply-To:', businessEmail || '(not set)');
+  console.log('   Subject:', subject);
+
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✉️  Contact email sent successfully:', info.messageId);
+      console.log('   Accepted:', info.accepted);
+      console.log('   Rejected:', info.rejected);
+
+      if (process.env.NODE_ENV !== 'production') {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        if (previewUrl) {
+          console.log('📧 Preview URL:', previewUrl);
+        }
+      }
+
+      return info;
+    } catch (error) {
+      console.error('📧 [EMAIL] Contact email FAILED to send:');
+      console.error('   Error:', error.message);
+      throw error;
+    }
+  } else {
+    console.log('📧 [EMAIL] Contact email (not sent - no email config):');
+    console.log('   To:', to);
+    console.log('   Subject:', subject);
+    console.log('   Message:', message);
+    return { messageId: 'dev-mode-no-email' };
+  }
+};
+
 export default {
   sendVerificationEmail,
   sendPasswordResetEmail,
@@ -912,4 +1026,5 @@ export default {
   sendCancellationEmail,
   sendRescheduleEmail,
   sendBusinessAlertEmail,
+  sendContactEmail,
 };

@@ -133,6 +133,21 @@ export const getAvailableSlots = async (businessSlug, serviceId, date) => {
   return response.data;
 };
 
+/**
+ * Send contact email to client
+ * @param {string} appointmentId - Appointment ID
+ * @param {string} subject - Email subject
+ * @param {string} message - Email message
+ * @returns {Promise} - Send result
+ */
+export const contactClient = async (appointmentId, subject, message) => {
+  const response = await api.post(`/appointments/${appointmentId}/contact`, {
+    subject,
+    message,
+  });
+  return response.data;
+};
+
 export default {
   getAppointments,
   getAppointment,
@@ -145,4 +160,5 @@ export default {
   getUpcomingAppointments,
   getPastAppointments,
   getAvailableSlots,
+  contactClient,
 };

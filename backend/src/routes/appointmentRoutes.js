@@ -6,7 +6,8 @@ import {
   updateAppointmentStatus,
   updateAppointmentNotes,
   rescheduleAppointment,
-  confirmAppointment
+  confirmAppointment,
+  contactClient
 } from '../controllers/appointmentController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -66,5 +67,12 @@ router.put('/appointments/:appointmentId/notes', protect, updateAppointmentNotes
  * @access  Private (Business Owner)
  */
 router.put('/appointments/:appointmentId/reschedule', protect, rescheduleAppointment);
+
+/**
+ * @route   POST /api/appointments/:appointmentId/contact
+ * @desc    Send contact email to client
+ * @access  Private (Business Owner)
+ */
+router.post('/appointments/:appointmentId/contact', protect, contactClient);
 
 export default router;

@@ -27,6 +27,7 @@ import {
   Save,
   FileText,
   UserX,
+  Send,
 } from 'lucide-react';
 import {
   Dialog,
@@ -45,6 +46,7 @@ import {
   updateAppointmentNotes,
   confirmAppointment as confirmAppointmentService,
   cancelAppointment as cancelAppointmentService,
+  contactClient as contactClientService,
 } from '../../services/appointmentsService';
 import { useToast } from '../../hooks/use-toast';
 
@@ -62,9 +64,12 @@ const AppointmentDetail = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showContactDialog, setShowContactDialog] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [contactSubject, setContactSubject] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   // Fetch appointment data from API
@@ -309,6 +314,39 @@ const AppointmentDetail = () => {
     }
   };
 
+  const handleSendContactEmail = async () => {
+    if (!contactSubject.trim() || !contactMessage.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please enter both subject and message",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await contactClientService(id, contactSubject.trim(), contactMessage.trim());
+      setShowContactDialog(false);
+      setContactSubject('');
+      setContactMessage('');
+      toast({
+        title: "Success!",
+        description: "Email sent successfully to the client",
+        variant: "success",
+      });
+    } catch (err) {
+      console.error('Error sending contact email:', err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to send email',
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -435,6 +473,15 @@ const AppointmentDetail = () => {
                 Call
               </Button>
             </div>
+            <Button
+              variant="default"
+              size="sm"
+              className="w-full mt-2"
+              onClick={() => setShowContactDialog(true)}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Send Message
+            </Button>
           </CardContent>
         </Card>
 
@@ -779,6 +826,59 @@ const AppointmentDetail = () => {
               disabled={!rescheduleDate || !rescheduleTime || actionLoading}
             >
               {actionLoading ? 'Rescheduling...' : 'Reschedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contact Client Dialog */}
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Send Message to Client</DialogTitle>
+            <DialogDescription>
+              Send an email to {appointment?.clientFirstName} {appointment?.clientLastName} at {appointment?.clientEmail}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="contact-subject">Subject</Label>
+              <Input
+                id="contact-subject"
+                value={contactSubject}
+                onChange={(e) => setContactSubject(e.target.value)}
+                placeholder="Enter email subject..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact-message">Message</Label>
+              <Textarea
+                id="contact-message"
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                placeholder="Enter your message to the client..."
+                rows={6}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowContactDialog(false);
+                setContactSubject('');
+                setContactMessage('');
+              }}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendContactEmail}
+              disabled={!contactSubject.trim() || !contactMessage.trim() || actionLoading}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {actionLoading ? 'Sending...' : 'Send Email'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -7,7 +7,8 @@ import {
   sendAppointmentConfirmationEmail,
   sendCancellationEmail,
   sendRescheduleEmail,
-  sendBusinessAlertEmail
+  sendBusinessAlertEmail,
+  sendContactEmail
 } from '../services/emailService.js';
 import crypto from 'crypto';
 
@@ -1366,6 +1367,92 @@ export const cancelAppointmentByClient = async (req, res) => {
   }
 };
 
+/**
+ * Send a contact email to client (business owner only)
+ * POST /api/appointments/:appointmentId/contact
+ * Body: { subject, message }
+ */
+export const contactClient = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { subject, message } = req.body;
+    const userId = req.user.id;
+
+    // Validate required fields
+    if (!subject || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subject and message are required'
+      });
+    }
+
+    // Get appointment
+    const appointment = await db.select().from(appointments)
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+
+    if (!appointment.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    const apt = appointment[0];
+
+    // Get business and verify ownership
+    const business = await db.select().from(businesses)
+      .where(eq(businesses.id, apt.businessId))
+      .limit(1);
+
+    if (!business.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found'
+      });
+    }
+
+    if (business[0].ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this business.'
+      });
+    }
+
+    const businessData = business[0];
+
+    // Get owner's email as fallback if business email is not set
+    const owner = await db.select().from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const replyToEmail = businessData.email || (owner.length ? owner[0].email : null);
+
+    // Send the contact email
+    await sendContactEmail({
+      to: apt.clientEmail,
+      clientName: `${apt.clientFirstName} ${apt.clientLastName}`,
+      businessName: businessData.businessName,
+      businessEmail: replyToEmail,
+      subject,
+      message
+    });
+
+    res.json({
+      success: true,
+      message: 'Email sent successfully'
+    });
+
+  } catch (error) {
+    console.error('Contact client error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send email',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   createGuestAppointment,
   confirmAppointmentEmail,
@@ -1376,5 +1463,6 @@ export default {
   updateAppointmentNotes,
   rescheduleAppointment,
   confirmAppointment,
-  cancelAppointmentByClient
+  cancelAppointmentByClient,
+  contactClient
 };
