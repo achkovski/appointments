@@ -425,15 +425,29 @@ export const confirmAppointmentEmail = async (req, res) => {
       })
       .where(eq(appointments.id, apt.id));
 
+    // Get service information for response
+    const service = await db.select().from(services)
+      .where(eq(services.id, apt.serviceId))
+      .limit(1);
+
+    // Format appointment details for frontend
+    const appointmentDetails = {
+      status: newStatus,
+      requiresBusinessApproval,
+      serviceName: service.length > 0 ? service[0].name : null,
+      appointmentDate: apt.appointmentDate,
+      startTime: apt.startTime,
+      endTime: apt.endTime,
+      businessName: businessData.businessName,
+      businessSlug: businessData.slug
+    };
+
     res.json({
       success: true,
       message: autoConfirm
         ? 'Email verified! Your appointment is now confirmed.'
         : 'Email verified! Your appointment is pending business confirmation.',
-      data: {
-        status: newStatus,
-        requiresBusinessApproval
-      }
+      data: appointmentDetails
     });
 
   } catch (error) {
