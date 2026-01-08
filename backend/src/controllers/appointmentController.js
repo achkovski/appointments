@@ -526,6 +526,7 @@ export const getBusinessAppointments = async (req, res) => {
       notes: appointments.notes,
       clientNotes: appointments.clientNotes,
       cancellationReason: appointments.cancellationReason,
+      completedAutomatically: appointments.completedAutomatically,
       createdAt: appointments.createdAt,
       updatedAt: appointments.updatedAt,
       serviceName: services.name,
@@ -859,6 +860,11 @@ export const updateAppointmentStatus = async (req, res) => {
 
     if (status === 'CANCELLED' && cancellationReason) {
       updates.cancellationReason = cancellationReason;
+    }
+
+    // When manually setting to COMPLETED, ensure completedAutomatically is false
+    if (status === 'COMPLETED') {
+      updates.completedAutomatically = false;
     }
 
     await db.update(appointments)
@@ -1453,6 +1459,115 @@ export const contactClient = async (req, res) => {
   }
 };
 
+/**
+ * Manually trigger auto-complete for past appointments
+ * POST /api/appointments/auto-complete
+ * Runs the auto-complete process for the authenticated user's business
+ */
+export const triggerAutoComplete = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get the user's business
+    const business = await db.select().from(businesses)
+      .where(eq(businesses.ownerId, userId))
+      .limit(1);
+
+    if (!business.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found'
+      });
+    }
+
+    const businessData = business[0];
+    const settings = businessData.settings || {};
+
+    // Check if auto-complete is enabled
+    if (!settings.autoCompleteAppointments) {
+      return res.status(400).json({
+        success: false,
+        message: 'Auto-complete is not enabled for this business. Please enable it in Settings first.'
+      });
+    }
+
+    const graceHours = settings.autoCompleteGraceHours ?? 24;
+
+    // Calculate cutoff datetime
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - graceHours);
+
+    const year = cutoff.getFullYear();
+    const month = String(cutoff.getMonth() + 1).padStart(2, '0');
+    const day = String(cutoff.getDate()).padStart(2, '0');
+    const cutoffDate = `${year}-${month}-${day}`;
+
+    const hours = String(cutoff.getHours()).padStart(2, '0');
+    const minutes = String(cutoff.getMinutes()).padStart(2, '0');
+    const seconds = String(cutoff.getSeconds()).padStart(2, '0');
+    const cutoffTime = `${hours}:${minutes}:${seconds}`;
+
+    // Find eligible appointments
+    const eligibleAppointments = await db
+      .select()
+      .from(appointments)
+      .where(and(
+        eq(appointments.businessId, businessData.id),
+        eq(appointments.status, 'CONFIRMED'),
+        or(
+          lte(appointments.appointmentDate, cutoffDate)
+        )
+      ));
+
+    // Filter more precisely: appointments where date < cutoffDate OR (date = cutoffDate AND endTime < cutoffTime)
+    const toComplete = eligibleAppointments.filter(apt => {
+      if (apt.appointmentDate < cutoffDate) {
+        return true;
+      }
+      if (apt.appointmentDate === cutoffDate && apt.endTime < cutoffTime) {
+        return true;
+      }
+      return false;
+    });
+
+    if (toComplete.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No appointments to auto-complete',
+        completed: 0
+      });
+    }
+
+    // Update each eligible appointment
+    let completedCount = 0;
+    for (const apt of toComplete) {
+      await db
+        .update(appointments)
+        .set({
+          status: 'COMPLETED',
+          completedAutomatically: true,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(appointments.id, apt.id));
+      completedCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully auto-completed ${completedCount} appointment(s)`,
+      completed: completedCount
+    });
+
+  } catch (error) {
+    console.error('Trigger auto-complete error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to run auto-complete',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   createGuestAppointment,
   confirmAppointmentEmail,
@@ -1464,5 +1579,6 @@ export default {
   rescheduleAppointment,
   confirmAppointment,
   cancelAppointmentByClient,
-  contactClient
+  contactClient,
+  triggerAutoComplete
 };

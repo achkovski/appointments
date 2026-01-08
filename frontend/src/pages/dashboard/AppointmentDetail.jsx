@@ -93,8 +93,8 @@ const AppointmentDetail = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    return <StatusBadge status={status} />;
+  const getStatusBadge = (status, completedAutomatically = false) => {
+    return <StatusBadge status={status} completedAutomatically={completedAutomatically} />;
   };
 
   const formatDate = (dateString) => {
@@ -402,7 +402,7 @@ const AppointmentDetail = () => {
             </p>
           </div>
         </div>
-        {getStatusBadge(appointment.status)}
+        {getStatusBadge(appointment.status, appointment.completedAutomatically)}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -729,6 +729,35 @@ const AppointmentDetail = () => {
                 >
                   <AlertCircle className="mr-2 h-4 w-4" />
                   {actionLoading ? 'Updating...' : 'Reopen as Pending'}
+                </Button>
+              </>
+            )}
+            {/* Actions for COMPLETED appointments */}
+            {appointment.status?.toUpperCase() === 'COMPLETED' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => handleUnapprove()}
+                  disabled={actionLoading}
+                >
+                  <AlertCircle className="mr-2 h-4 w-4" />
+                  {actionLoading ? 'Updating...' : 'Reopen as Pending'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleMarkNoShow}
+                  disabled={actionLoading}
+                >
+                  <UserX className="mr-2 h-4 w-4" />
+                  {actionLoading ? 'Updating...' : 'Change to No Show'}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowCancelDialog(true)}
+                  disabled={actionLoading}
+                >
+                  <Ban className="mr-2 h-4 w-4" />
+                  Change to Cancelled
                 </Button>
               </>
             )}

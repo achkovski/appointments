@@ -17,6 +17,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { updateBusiness } from '../../services/businessService';
 import { updateUser, changePassword } from '../../services/authService';
+import { triggerAutoComplete } from '../../services/appointmentsService';
 
 const TIME_SLOT_OPTIONS = [15, 30, 45, 60];
 const BOOKING_NOTICE_OPTIONS = [
@@ -35,6 +36,14 @@ const ADVANCE_BOOKING_OPTIONS = [
   { value: 60, label: '2 months' },
   { value: 90, label: '3 months' },
   { value: 180, label: '6 months' },
+];
+const AUTO_COMPLETE_GRACE_OPTIONS = [
+  { value: 1, label: '1 hour' },
+  { value: 6, label: '6 hours' },
+  { value: 12, label: '12 hours' },
+  { value: 24, label: '24 hours' },
+  { value: 48, label: '48 hours' },
+  { value: 72, label: '72 hours' },
 ];
 
 const Settings = () => {
@@ -55,6 +64,8 @@ const Settings = () => {
     maxAdvanceBooking: 30,
     cancellationNotice: 24,
     maxAppointmentsPerDay: 0,
+    autoCompleteAppointments: false,
+    autoCompleteGraceHours: 24,
   });
 
   // Notification Settings
@@ -87,6 +98,10 @@ const Settings = () => {
 
   const [passwordErrors, setPasswordErrors] = useState({});
 
+  // Auto-complete state
+  const [autoCompleteLoading, setAutoCompleteLoading] = useState(false);
+  const [autoCompleteResult, setAutoCompleteResult] = useState(null);
+
   useEffect(() => {
     if (business) {
       const settings = business.settings || {};
@@ -99,6 +114,8 @@ const Settings = () => {
         maxAdvanceBooking: settings.maxAdvanceBooking ?? 30,
         cancellationNotice: settings.cancellationNotice ?? 24,
         maxAppointmentsPerDay: settings.maxAppointmentsPerDay ?? 0,
+        autoCompleteAppointments: settings.autoCompleteAppointments ?? false,
+        autoCompleteGraceHours: settings.autoCompleteGraceHours ?? 24,
       });
       setNotificationSettings({
         emailOnNewBooking: settings.emailOnNewBooking ?? true,
@@ -243,6 +260,32 @@ const Settings = () => {
       setError(err.response?.data?.message || 'Failed to change password');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRunAutoComplete = async () => {
+    try {
+      setAutoCompleteLoading(true);
+      setAutoCompleteResult(null);
+      setError(null);
+
+      const result = await triggerAutoComplete();
+
+      setAutoCompleteResult(result);
+      if (result.completed > 0) {
+        setSuccess(`Successfully completed ${result.completed} appointment(s)`);
+      } else {
+        setSuccess('No appointments to auto-complete');
+      }
+      setTimeout(() => {
+        setSuccess(null);
+        setAutoCompleteResult(null);
+      }, 5000);
+    } catch (err) {
+      console.error('Error running auto-complete:', err);
+      setError(err.response?.data?.message || 'Failed to run auto-complete');
+    } finally {
+      setAutoCompleteLoading(false);
     }
   };
 
@@ -433,6 +476,66 @@ const Settings = () => {
               <p className="text-xs text-muted-foreground">
                 Set to 0 for unlimited appointments
               </p>
+            </div>
+
+            <div className="border-t pt-6 mt-6">
+              <h3 className="text-lg font-semibold mb-4">Appointment Completion</h3>
+
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex-1">
+                  <p className="font-medium">Auto-complete past appointments</p>
+                  <p className="text-sm text-muted-foreground">
+                    Automatically mark confirmed appointments as completed after they pass. This helps keep your analytics accurate without manual updates.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bookingSettings.autoCompleteAppointments}
+                    onChange={(e) => handleBookingSettingChange('autoCompleteAppointments', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+
+              {bookingSettings.autoCompleteAppointments && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="autoCompleteGraceHours">Grace Period</Label>
+                    <select
+                      id="autoCompleteGraceHours"
+                      value={bookingSettings.autoCompleteGraceHours}
+                      onChange={(e) => handleBookingSettingChange('autoCompleteGraceHours', parseInt(e.target.value))}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {AUTO_COMPLETE_GRACE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      How long after an appointment ends before it's automatically marked as completed. This gives you time to manually mark no-shows or cancellations.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleRunAutoComplete}
+                      disabled={autoCompleteLoading || hasChanges}
+                    >
+                      {autoCompleteLoading ? 'Running...' : 'Run Now'}
+                    </Button>
+                    <p className="text-sm text-muted-foreground">
+                      {hasChanges
+                        ? 'Save settings first to run auto-complete'
+                        : 'Manually complete all eligible past appointments now'}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="pt-4">

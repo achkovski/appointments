@@ -10,6 +10,7 @@ import publicBookingRoutes from './routes/publicBookingRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import { startReminderScheduler } from './services/reminderScheduler.js';
+import { startAutoCompleteScheduler } from './services/autoCompleteScheduler.js';
 
 dotenv.config();
 
@@ -71,4 +72,8 @@ app.listen(PORT, () => {
   // Start the appointment reminder scheduler
   startReminderScheduler();
   console.log(`📧 Reminder scheduler initialized`);
+
+  // Start the auto-complete scheduler
+  startAutoCompleteScheduler();
+  console.log(`✅ Auto-complete scheduler initialized`);
 });

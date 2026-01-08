@@ -1,11 +1,11 @@
 import { Badge } from '../ui/badge';
-import { CheckCircle, XCircle, AlertCircle, Clock, Ban } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Clock, Ban, Zap } from 'lucide-react';
 
 /**
  * Consistent status badge component for appointments
  * Used across Appointments list, AppointmentDetail, and BookingPage
  */
-const StatusBadge = ({ status, showIcon = true, size = 'default' }) => {
+const StatusBadge = ({ status, showIcon = true, size = 'default', completedAutomatically = false }) => {
   const statusUpper = status?.toUpperCase();
 
   const statusConfig = {
@@ -33,6 +33,12 @@ const StatusBadge = ({ status, showIcon = true, size = 'default' }) => {
       icon: CheckCircle,
       className: 'bg-gray-100 text-gray-700 border-gray-300',
     },
+    COMPLETED_AUTO: {
+      variant: 'outline',
+      label: 'Auto-Completed',
+      icon: Zap,
+      className: 'bg-blue-50 text-blue-700 border-blue-300',
+    },
     NO_SHOW: {
       variant: 'outline',
       label: 'No Show',
@@ -41,7 +47,9 @@ const StatusBadge = ({ status, showIcon = true, size = 'default' }) => {
     },
   };
 
-  const config = statusConfig[statusUpper] || statusConfig.PENDING;
+  // Use auto-completed config if status is COMPLETED and was auto-completed
+  const configKey = statusUpper === 'COMPLETED' && completedAutomatically ? 'COMPLETED_AUTO' : statusUpper;
+  const config = statusConfig[configKey] || statusConfig.PENDING;
   const Icon = config.icon;
 
   return (

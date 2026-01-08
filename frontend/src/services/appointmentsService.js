@@ -148,6 +148,15 @@ export const contactClient = async (appointmentId, subject, message) => {
   return response.data;
 };
 
+/**
+ * Manually trigger auto-complete for past appointments
+ * @returns {Promise} - Result with count of completed appointments
+ */
+export const triggerAutoComplete = async () => {
+  const response = await api.post('/appointments/auto-complete');
+  return response.data;
+};
+
 export default {
   getAppointments,
   getAppointment,
@@ -161,4 +170,5 @@ export default {
   getPastAppointments,
   getAvailableSlots,
   contactClient,
+  triggerAutoComplete,
 };

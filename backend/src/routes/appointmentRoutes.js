@@ -7,7 +7,8 @@ import {
   updateAppointmentNotes,
   rescheduleAppointment,
   confirmAppointment,
-  contactClient
+  contactClient,
+  triggerAutoComplete
 } from '../controllers/appointmentController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -74,5 +75,12 @@ router.put('/appointments/:appointmentId/reschedule', protect, rescheduleAppoint
  * @access  Private (Business Owner)
  */
 router.post('/appointments/:appointmentId/contact', protect, contactClient);
+
+/**
+ * @route   POST /api/appointments/auto-complete
+ * @desc    Manually trigger auto-complete for past appointments
+ * @access  Private (Business Owner)
+ */
+router.post('/appointments/auto-complete', protect, triggerAutoComplete);
 
 export default router;

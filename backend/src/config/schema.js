@@ -110,6 +110,7 @@ export const appointments = pgTable("appointments", {
 	clientNotes: text("client_notes"),
 	cancellationReason: text("cancellation_reason"),
 	reassignmentNote: text("reassignment_note"),
+	completedAutomatically: boolean("completed_automatically").default(false).notNull(),
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull(),
 }, (table) => [
