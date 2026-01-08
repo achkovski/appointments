@@ -30,6 +30,9 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import CreateAppointmentDialog from '../../components/appointments/CreateAppointmentDialog';
 import StatusBadge from '../../components/appointments/StatusBadge';
@@ -52,6 +55,7 @@ const Appointments = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc', 'desc', or null
   const itemsPerPage = 25;
 
   // Fetch appointments and employees when business is loaded
@@ -162,9 +166,23 @@ const Appointments = () => {
       }
     }
 
+    // Apply sorting
+    if (sortDirection) {
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = new Date(`${a.appointmentDate}T${a.startTime}`);
+        const dateB = new Date(`${b.appointmentDate}T${b.startTime}`);
+
+        if (sortDirection === 'asc') {
+          return dateA - dateB;
+        } else {
+          return dateB - dateA;
+        }
+      });
+    }
+
     setFilteredAppointments(filtered);
     setCurrentPage(1);
-  }, [activeFilter, searchQuery, appointments, showTodayOnly, selectedDate, selectedEmployee]);
+  }, [activeFilter, searchQuery, appointments, showTodayOnly, selectedDate, selectedEmployee, sortDirection]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
@@ -196,6 +214,20 @@ const Appointments = () => {
       minute: '2-digit',
       hour12: true,
     });
+  };
+
+  const toggleSort = () => {
+    setSortDirection((prev) => {
+      if (prev === 'desc') return 'asc';
+      if (prev === 'asc') return 'desc';
+      return 'desc';
+    });
+  };
+
+  const getSortIcon = () => {
+    if (sortDirection === 'asc') return <ArrowUp className="h-4 w-4" />;
+    if (sortDirection === 'desc') return <ArrowDown className="h-4 w-4" />;
+    return <ArrowUpDown className="h-4 w-4" />;
   };
 
   const filterButtons = [
@@ -416,7 +448,15 @@ const Appointments = () => {
                     <TableHead className="w-[60px]">#</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Service</TableHead>
-                    <TableHead>Date & Time</TableHead>
+                    <TableHead>
+                      <button
+                        onClick={toggleSort}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Date & Time
+                        {getSortIcon()}
+                      </button>
+                    </TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
