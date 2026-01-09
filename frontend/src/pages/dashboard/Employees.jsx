@@ -27,7 +27,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useBusiness } from '../../context/BusinessContext';
-import { useToast } from '../../hooks/use-toast';
+import { toastSuccess, toastError } from '../../utils/toastHelpers';
 import {
   getEmployees,
   createEmployee,
@@ -41,7 +41,6 @@ import EmployeeAvailabilityDialog from '../../components/employees/EmployeeAvail
 
 const Employees = () => {
   const { business, loading: businessLoading } = useBusiness();
-  const { toast } = useToast();
   const [employees, setEmployees] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,18 +142,10 @@ const Employees = () => {
       await fetchData();
       setShowAddDialog(false);
       resetForm();
-      toast({
-        title: "Success!",
-        description: "Employee created successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Employee created successfully");
     } catch (err) {
       console.error('Error creating employee:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to create employee',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to create employee');
     } finally {
       setActionLoading(false);
     }
@@ -178,18 +169,10 @@ const Employees = () => {
       setShowEditDialog(false);
       setSelectedEmployee(null);
       resetForm();
-      toast({
-        title: "Success!",
-        description: "Employee updated successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Employee updated successfully");
     } catch (err) {
       console.error('Error updating employee:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to update employee',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to update employee');
     } finally {
       setActionLoading(false);
     }
@@ -202,18 +185,10 @@ const Employees = () => {
       await fetchData();
       setShowDeleteDialog(false);
       setSelectedEmployee(null);
-      toast({
-        title: "Success!",
-        description: "Employee deleted successfully. Appointments have been reassigned.",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Employee deleted successfully. Appointments have been reassigned.");
     } catch (err) {
       console.error('Error deleting employee:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to delete employee',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to delete employee');
     } finally {
       setActionLoading(false);
     }
@@ -223,18 +198,10 @@ const Employees = () => {
     try {
       await toggleEmployeeStatus(employee.id);
       await fetchData();
-      toast({
-        title: "Success!",
-        description: `Employee ${employee.isActive ? 'deactivated' : 'activated'} successfully`,
-        variant: "success",
-      });
+      toastSuccess("Success!", `Employee ${employee.isActive ? 'deactivated' : 'activated'} successfully`);
     } catch (err) {
       console.error('Error toggling employee status:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to toggle employee status',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to toggle employee status');
     }
   };
 
@@ -246,18 +213,10 @@ const Employees = () => {
       setShowServicesDialog(false);
       setSelectedEmployee(null);
       setSelectedServices([]);
-      toast({
-        title: "Success!",
-        description: "Services assigned successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Services assigned successfully");
     } catch (err) {
       console.error('Error assigning services:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to assign services',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to assign services');
     } finally {
       setActionLoading(false);
     }

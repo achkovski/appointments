@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
@@ -11,11 +12,16 @@ import appointmentRoutes from './routes/appointmentRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import { startReminderScheduler } from './services/reminderScheduler.js';
 import { startAutoCompleteScheduler } from './services/autoCompleteScheduler.js';
+import { initializeSocket } from './config/socket.js';
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Initialize Socket.IO
+initializeSocket(httpServer);
 
 // Middleware
 app.use(cors());
@@ -65,9 +71,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔌 Socket.IO ready for connections`);
 
   // Start the appointment reminder scheduler
   startReminderScheduler();

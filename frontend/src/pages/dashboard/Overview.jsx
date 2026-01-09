@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, ChevronLeft, ChevronRight, CheckCircle2, TrendingUp, AlertCircle, CalendarCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { useBusiness } from '../../context/BusinessContext';
 import { getAppointments } from '../../services/appointmentsService';
+import { useRefreshListener, REFRESH_EVENTS } from '../../components/notifications/NotificationListener';
 
 const Overview = () => {
   const navigate = useNavigate();
@@ -30,6 +31,12 @@ const Overview = () => {
       fetchDashboardData();
     }
   }, [business]);
+
+  // Listen for real-time refresh events (new appointments, status changes)
+  useRefreshListener(REFRESH_EVENTS.OVERVIEW, useCallback(() => {
+    console.log('🔄 Refreshing overview data...');
+    fetchDashboardData();
+  }, [business?.id]));
 
   const fetchDashboardData = async () => {
     try {

@@ -23,7 +23,7 @@ import {
   XCircle,
   Coffee,
 } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast';
+import { toastSuccess, toastError } from '../../utils/toastHelpers';
 import {
   getEmployeeAvailability,
   createEmployeeAvailability,
@@ -49,7 +49,6 @@ const DAYS_OF_WEEK = [
 ];
 
 const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
-  const { toast } = useToast();
   const [workingHours, setWorkingHours] = useState([]);
   const [specialDates, setSpecialDates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,11 +106,7 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       setSpecialDates(specialDatesResponse.data || []);
     } catch (err) {
       console.error('Error fetching employee availability:', err);
-      toast({
-        title: "Error",
-        description: "Failed to load availability data",
-        variant: "destructive",
-      });
+      toastError("Error", "Failed to load availability data");
     } finally {
       setLoading(false);
     }
@@ -122,18 +117,10 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       setActionLoading(true);
       await copyBusinessAvailability(employee.id);
       await fetchData();
-      toast({
-        title: "Success!",
-        description: "Business hours copied successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Business hours copied successfully");
     } catch (err) {
       console.error('Error copying business hours:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || "Failed to copy business hours",
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || "Failed to copy business hours");
     } finally {
       setActionLoading(false);
     }
@@ -210,9 +197,9 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       await fetchData();
       setShowAddHoursDialog(false);
       resetHoursForm();
-      toast({ title: "Success!", description: "Working hours created", variant: "success" });
+      toastSuccess("Success!", "Working hours created");
     } catch (err) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to create working hours", variant: "destructive" });
+      toastError("Error", err.response?.data?.message || "Failed to create working hours");
     } finally {
       setActionLoading(false);
     }
@@ -227,9 +214,9 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       setShowEditHoursDialog(false);
       setSelectedItem(null);
       resetHoursForm();
-      toast({ title: "Success!", description: "Working hours updated", variant: "success" });
+      toastSuccess("Success!", "Working hours updated");
     } catch (err) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to update working hours", variant: "destructive" });
+      toastError("Error", err.response?.data?.message || "Failed to update working hours");
     } finally {
       setActionLoading(false);
     }
@@ -244,9 +231,9 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       setShowAddBreakDialog(false);
       setSelectedAvailability(null);
       resetBreakForm();
-      toast({ title: "Success!", description: "Break added", variant: "success" });
+      toastSuccess("Success!", "Break added");
     } catch (err) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to add break", variant: "destructive" });
+      toastError("Error", err.response?.data?.message || "Failed to add break");
     } finally {
       setActionLoading(false);
     }
@@ -257,9 +244,9 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       setActionLoading(true);
       await deleteEmployeeBreak(employee.id, availabilityId, breakId);
       await fetchData();
-      toast({ title: "Success!", description: "Break deleted", variant: "success" });
+      toastSuccess("Success!", "Break deleted");
     } catch (err) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to delete break", variant: "destructive" });
+      toastError("Error", err.response?.data?.message || "Failed to delete break");
     } finally {
       setActionLoading(false);
     }
@@ -282,9 +269,9 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       await fetchData();
       setShowAddSpecialDateDialog(false);
       resetSpecialDateForm();
-      toast({ title: "Success!", description: "Special date created", variant: "success" });
+      toastSuccess("Success!", "Special date created");
     } catch (err) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to create special date", variant: "destructive" });
+      toastError("Error", err.response?.data?.message || "Failed to create special date");
     } finally {
       setActionLoading(false);
     }
@@ -308,9 +295,9 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       setShowEditSpecialDateDialog(false);
       setSelectedItem(null);
       resetSpecialDateForm();
-      toast({ title: "Success!", description: "Special date updated", variant: "success" });
+      toastSuccess("Success!", "Special date updated");
     } catch (err) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to update special date", variant: "destructive" });
+      toastError("Error", err.response?.data?.message || "Failed to update special date");
     } finally {
       setActionLoading(false);
     }
@@ -328,9 +315,9 @@ const EmployeeAvailabilityDialog = ({ open, onOpenChange, employee }) => {
       setShowDeleteDialog(false);
       setSelectedItem(null);
       setDeleteType(null);
-      toast({ title: "Success!", description: "Item deleted", variant: "success" });
+      toastSuccess("Success!", "Item deleted");
     } catch (err) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to delete", variant: "destructive" });
+      toastError("Error", err.response?.data?.message || "Failed to delete");
     } finally {
       setActionLoading(false);
     }

@@ -18,7 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useBusiness } from '../../context/BusinessContext';
-import { useToast } from '../../hooks/use-toast';
+import { toastSuccess, toastError } from '../../utils/toastHelpers';
 import { updateBusiness, generateQRCode } from '../../services/businessService';
 
 const CAPACITY_MODES = [
@@ -28,7 +28,6 @@ const CAPACITY_MODES = [
 
 const BusinessProfile = () => {
   const { business, loading: businessLoading, updateBusiness: updateBusinessContext } = useBusiness();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -121,11 +120,7 @@ const BusinessProfile = () => {
       const response = await updateBusiness(business.id, updateData);
       await updateBusinessContext(response.business || response);
       setHasChanges(false);
-      toast({
-        title: "Success!",
-        description: "Business profile updated successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Business profile updated successfully");
     } catch (err) {
       console.error('Error updating business:', err);
       setError(err.response?.data?.message || 'Failed to update business profile');
@@ -140,18 +135,10 @@ const BusinessProfile = () => {
       const response = await generateQRCode(business.id);
       setQrCodeUrl(response.qrCodeUrl || response.qrCode);
       await updateBusinessContext({ ...business, qrCodeUrl: response.qrCodeUrl || response.qrCode });
-      toast({
-        title: "Success!",
-        description: "QR Code generated successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "QR Code generated successfully");
     } catch (err) {
       console.error('Error generating QR code:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to generate QR code',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to generate QR code');
     } finally {
       setQrLoading(false);
     }

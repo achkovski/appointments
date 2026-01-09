@@ -11,6 +11,7 @@ import {
   sendContactEmail
 } from '../services/emailService.js';
 import crypto from 'crypto';
+import { emitToBusinessRoom } from '../config/socket.js';
 
 /**
  * APPOINTMENT CONTROLLER
@@ -338,6 +339,21 @@ export const createGuestAppointment = async (req, res) => {
         requiresEmailConfirmation: requireEmailConfirmation
       }
     };
+
+    // Emit real-time notification to business dashboard
+    emitToBusinessRoom(businessData.id, 'appointment:created', {
+      type: 'new_appointment',
+      appointment: {
+        id: newAppointment.id,
+        clientName: `${clientFirstName} ${clientLastName}`,
+        serviceName: serviceData.name,
+        appointmentDate,
+        startTime,
+        endTime,
+        status: newAppointment.status
+      },
+      message: `New appointment booked by ${clientFirstName} ${clientLastName}`
+    });
 
     res.status(201).json(response);
 
@@ -900,6 +916,16 @@ export const updateAppointmentStatus = async (req, res) => {
         // Don't fail the request if email fails
       }
     }
+
+    // Emit real-time notification for status update
+    const apt = appointment[0];
+    emitToBusinessRoom(apt.businessId, 'appointment:updated', {
+      type: 'status_change',
+      appointmentId: apt.id,
+      oldStatus: apt.status,
+      newStatus: status,
+      message: `Appointment status changed to ${status}`
+    });
 
     res.json({
       success: true,

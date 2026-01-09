@@ -34,7 +34,7 @@ import {
   updateSpecialDate,
   deleteSpecialDate,
 } from '../../services/availabilityService';
-import { useToast } from '../../hooks/use-toast';
+import { toastSuccess, toastError } from '../../utils/toastHelpers';
 
 const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday' },
@@ -48,7 +48,6 @@ const DAYS_OF_WEEK = [
 
 const Availability = () => {
   const { business, loading: businessLoading } = useBusiness();
-  const { toast } = useToast();
   const [workingHours, setWorkingHours] = useState([]);
   const [specialDates, setSpecialDates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,10 +167,10 @@ const Availability = () => {
       await fetchData();
       setShowAddHoursDialog(false);
       resetHoursForm();
-      toast({ title: "Success!", description: "Working hours created successfully", variant: "success" });
+      toastSuccess("Success!", "Working hours created successfully");
     } catch (err) {
       console.error('Error creating working hours:', err);
-      toast({ title: "Error", description: err.response?.data?.message || 'Failed to create working hours', variant: "destructive" });
+      toastError("Error", err.response?.data?.message || 'Failed to create working hours');
     } finally {
       setActionLoading(false);
     }
@@ -187,10 +186,10 @@ const Availability = () => {
       setShowEditHoursDialog(false);
       setSelectedItem(null);
       resetHoursForm();
-      toast({ title: "Success!", description: "Working hours updated successfully", variant: "success" });
+      toastSuccess("Success!", "Working hours updated successfully");
     } catch (err) {
       console.error('Error updating working hours:', err);
-      toast({ title: "Error", description: err.response?.data?.message || 'Failed to update working hours', variant: "destructive" });
+      toastError("Error", err.response?.data?.message || 'Failed to update working hours');
     } finally {
       setActionLoading(false);
     }
@@ -218,10 +217,10 @@ const Availability = () => {
       await fetchData();
       setShowAddSpecialDateDialog(false);
       resetSpecialDateForm();
-      toast({ title: "Success!", description: "Special date created successfully", variant: "success" });
+      toastSuccess("Success!", "Special date created successfully");
     } catch (err) {
       console.error('Error creating special date:', err);
-      toast({ title: "Error", description: err.response?.data?.message || 'Failed to create special date', variant: "destructive" });
+      toastError("Error", err.response?.data?.message || 'Failed to create special date');
     } finally {
       setActionLoading(false);
     }
@@ -250,10 +249,10 @@ const Availability = () => {
       setShowEditSpecialDateDialog(false);
       setSelectedItem(null);
       resetSpecialDateForm();
-      toast({ title: "Success!", description: "Special date updated successfully", variant: "success" });
+      toastSuccess("Success!", "Special date updated successfully");
     } catch (err) {
       console.error('Error updating special date:', err);
-      toast({ title: "Error", description: err.response?.data?.message || 'Failed to update special date', variant: "destructive" });
+      toastError("Error", err.response?.data?.message || 'Failed to update special date');
     } finally {
       setActionLoading(false);
     }
@@ -271,10 +270,10 @@ const Availability = () => {
       setShowDeleteDialog(false);
       setSelectedItem(null);
       setDeleteType(null);
-      toast({ title: "Success!", description: "Item deleted successfully", variant: "success" });
+      toastSuccess("Success!", "Item deleted successfully");
     } catch (err) {
       console.error('Error deleting:', err);
-      toast({ title: "Error", description: err.response?.data?.message || 'Failed to delete item', variant: "destructive" });
+      toastError("Error", err.response?.data?.message || 'Failed to delete item');
     } finally {
       setActionLoading(false);
     }

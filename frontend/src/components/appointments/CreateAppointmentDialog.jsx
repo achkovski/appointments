@@ -18,11 +18,10 @@ import { createAppointment } from '../../services/appointmentsService';
 import { getAvailability } from '../../services/availabilityService';
 import { getEmployeesByService } from '../../services/employeesService';
 import { useBusiness } from '../../context/BusinessContext';
-import { useToast } from '../../hooks/use-toast';
+import { toastSuccess, toastError, toastWarning } from '../../utils/toastHelpers';
 
 const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) => {
   const { business } = useBusiness();
-  const { toast } = useToast();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -88,19 +87,11 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       setServices(activeServices);
 
       if (activeServices.length === 0) {
-        toast({
-          title: "No Services",
-          description: "Please create services first in the Services page.",
-          variant: "warning",
-        });
+        toastWarning("No Services", "Please create services first in the Services page.");
       }
     } catch (err) {
       console.error('Error fetching services:', err);
-      toast({
-        title: "Error",
-        description: "Failed to load services",
-        variant: "destructive",
-      });
+      toastError("Error", "Failed to load services");
     }
   };
 
@@ -112,11 +103,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       setAvailability(availabilityData);
     } catch (err) {
       console.error('Error fetching availability:', err);
-      toast({
-        title: "Error",
-        description: "Failed to load working hours",
-        variant: "destructive",
-      });
+      toastError("Error", "Failed to load working hours");
     } finally {
       setLoadingAvailability(false);
     }
@@ -318,11 +305,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       setEmployees([]);
       setOverrideWorkingHours(false);
 
-      toast({
-        title: "Success!",
-        description: "Appointment created successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Appointment created successfully");
 
       if (onSuccess) {
         onSuccess();
@@ -331,11 +314,7 @@ const CreateAppointmentDialog = ({ open, onOpenChange, businessId, onSuccess }) 
       onOpenChange(false);
     } catch (err) {
       console.error('Error creating appointment:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || err.message || 'Failed to create appointment',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || err.message || 'Failed to create appointment');
     } finally {
       setLoading(false);
     }

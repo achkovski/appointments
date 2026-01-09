@@ -24,7 +24,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useBusiness } from '../../context/BusinessContext';
-import { useToast } from '../../hooks/use-toast';
+import { toastSuccess, toastError } from '../../utils/toastHelpers';
 import {
   getServices,
   createService,
@@ -37,7 +37,6 @@ const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
 
 const Services = () => {
   const { business, loading: businessLoading } = useBusiness();
-  const { toast } = useToast();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -123,18 +122,10 @@ const Services = () => {
       await fetchServices();
       setShowAddDialog(false);
       resetForm();
-      toast({
-        title: "Success!",
-        description: "Service created successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Service created successfully");
     } catch (err) {
       console.error('Error creating service:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to create service',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to create service');
     } finally {
       setActionLoading(false);
     }
@@ -154,18 +145,10 @@ const Services = () => {
       setShowEditDialog(false);
       setSelectedService(null);
       resetForm();
-      toast({
-        title: "Success!",
-        description: "Service updated successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Service updated successfully");
     } catch (err) {
       console.error('Error updating service:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to update service',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to update service');
     } finally {
       setActionLoading(false);
     }
@@ -178,18 +161,10 @@ const Services = () => {
       await fetchServices();
       setShowDeleteDialog(false);
       setSelectedService(null);
-      toast({
-        title: "Success!",
-        description: "Service deleted successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Service deleted successfully");
     } catch (err) {
       console.error('Error deleting service:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to delete service',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to delete service');
     } finally {
       setActionLoading(false);
     }
@@ -199,18 +174,10 @@ const Services = () => {
     try {
       await toggleServiceStatus(service.id);
       await fetchServices();
-      toast({
-        title: "Success!",
-        description: `Service ${service.isActive ? 'deactivated' : 'activated'} successfully`,
-        variant: "success",
-      });
+      toastSuccess("Success!", `Service ${service.isActive ? 'deactivated' : 'activated'} successfully`);
     } catch (err) {
       console.error('Error toggling service status:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to toggle service status',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to toggle service status');
     }
   };
 

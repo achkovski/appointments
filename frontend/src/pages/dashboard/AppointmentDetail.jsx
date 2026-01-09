@@ -48,12 +48,11 @@ import {
   cancelAppointment as cancelAppointmentService,
   contactClient as contactClientService,
 } from '../../services/appointmentsService';
-import { useToast } from '../../hooks/use-toast';
+import { toastSuccess, toastError, toastWarning } from '../../utils/toastHelpers';
 
 const AppointmentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // State
   const [appointment, setAppointment] = useState(null);
@@ -135,18 +134,10 @@ const AppointmentDetail = () => {
       await updateAppointmentNotes(id, notes);
       setAppointment({ ...appointment, notes });
       setIsEditingNotes(false);
-      toast({
-        title: "Success!",
-        description: "Notes saved successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Notes saved successfully");
     } catch (err) {
       console.error('Error saving notes:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to save notes',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to save notes');
     } finally {
       setActionLoading(false);
     }
@@ -158,18 +149,10 @@ const AppointmentDetail = () => {
       await confirmAppointmentService(id);
       setAppointment({ ...appointment, status: 'CONFIRMED' });
       setShowConfirmDialog(false);
-      toast({
-        title: "Success!",
-        description: "Appointment confirmed successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Appointment confirmed successfully");
     } catch (err) {
       console.error('Error confirming appointment:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to confirm appointment',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to confirm appointment');
     } finally {
       setActionLoading(false);
     }
@@ -182,18 +165,10 @@ const AppointmentDetail = () => {
       setAppointment({ ...appointment, status: 'CANCELLED', cancellationReason });
       setShowCancelDialog(false);
       setCancellationReason('');
-      toast({
-        title: "Success!",
-        description: "Appointment cancelled successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Appointment cancelled successfully");
     } catch (err) {
       console.error('Error cancelling appointment:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to cancel appointment',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to cancel appointment');
     } finally {
       setActionLoading(false);
     }
@@ -223,18 +198,10 @@ const AppointmentDetail = () => {
       setShowRescheduleDialog(false);
       setRescheduleDate('');
       setRescheduleTime('');
-      toast({
-        title: "Success!",
-        description: "Appointment rescheduled successfully",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Appointment rescheduled successfully");
     } catch (err) {
       console.error('Error rescheduling appointment:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to reschedule appointment',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to reschedule appointment');
     } finally {
       setActionLoading(false);
     }
@@ -245,18 +212,10 @@ const AppointmentDetail = () => {
       setActionLoading(true);
       await updateAppointmentStatus(id, 'COMPLETED');
       setAppointment({ ...appointment, status: 'COMPLETED' });
-      toast({
-        title: "Success!",
-        description: "Appointment marked as completed",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Appointment marked as completed");
     } catch (err) {
       console.error('Error marking as completed:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to mark as completed',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to mark as completed');
     } finally {
       setActionLoading(false);
     }
@@ -267,18 +226,10 @@ const AppointmentDetail = () => {
       setActionLoading(true);
       await updateAppointmentStatus(id, 'NO_SHOW');
       setAppointment({ ...appointment, status: 'NO_SHOW' });
-      toast({
-        title: "Success!",
-        description: "Appointment marked as no-show",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Appointment marked as no-show");
     } catch (err) {
       console.error('Error marking as no-show:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to mark as no-show',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to mark as no-show');
     } finally {
       setActionLoading(false);
     }
@@ -289,18 +240,10 @@ const AppointmentDetail = () => {
       setActionLoading(true);
       await updateAppointmentStatus(id, 'PENDING');
       setAppointment({ ...appointment, status: 'PENDING' });
-      toast({
-        title: "Success!",
-        description: "Appointment set to pending",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Appointment set to pending");
     } catch (err) {
       console.error('Error unapproving appointment:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to unapprove appointment',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to unapprove appointment');
     } finally {
       setActionLoading(false);
     }
@@ -316,11 +259,7 @@ const AppointmentDetail = () => {
 
   const handleSendContactEmail = async () => {
     if (!contactSubject.trim() || !contactMessage.trim()) {
-      toast({
-        title: "Missing information",
-        description: "Please enter both subject and message",
-        variant: "destructive",
-      });
+      toastWarning("Missing information", "Please enter both subject and message");
       return;
     }
 
@@ -330,18 +269,10 @@ const AppointmentDetail = () => {
       setShowContactDialog(false);
       setContactSubject('');
       setContactMessage('');
-      toast({
-        title: "Success!",
-        description: "Email sent successfully to the client",
-        variant: "success",
-      });
+      toastSuccess("Success!", "Email sent successfully to the client");
     } catch (err) {
       console.error('Error sending contact email:', err);
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || 'Failed to send email',
-        variant: "destructive",
-      });
+      toastError("Error", err.response?.data?.message || 'Failed to send email');
     } finally {
       setActionLoading(false);
     }

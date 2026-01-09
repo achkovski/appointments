@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -39,6 +39,7 @@ import StatusBadge from '../../components/appointments/StatusBadge';
 import { useBusiness } from '../../context/BusinessContext';
 import { getAppointments } from '../../services/appointmentsService';
 import { getEmployees } from '../../services/employeesService';
+import { useRefreshListener, REFRESH_EVENTS } from '../../components/notifications/NotificationListener';
 
 const Appointments = () => {
   const navigate = useNavigate();
@@ -67,6 +68,12 @@ const Appointments = () => {
       }
     }
   }, [business]);
+
+  // Listen for real-time refresh events (new appointments, status changes)
+  useRefreshListener(REFRESH_EVENTS.APPOINTMENTS, useCallback(() => {
+    console.log('🔄 Refreshing appointments list...');
+    fetchAppointments();
+  }, [business?.id]));
 
   const fetchAppointments = async () => {
     if (!business?.id) return;

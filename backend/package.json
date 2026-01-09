@@ -29,6 +29,7 @@
     "nodemailer": "^7.0.11",
     "qrcode": "^1.5.4",
     "slugify": "^1.6.6",
+    "socket.io": "^4.8.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {

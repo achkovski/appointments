@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { BusinessProvider } from './context/BusinessContext';
+import { SocketProvider } from './context/SocketContext';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -17,6 +18,7 @@ import BusinessProfile from './pages/dashboard/BusinessProfile';
 import Settings from './pages/dashboard/Settings';
 import BookingPage from './pages/BookingPage';
 import ConfirmAppointment from './pages/ConfirmAppointment';
+import NotificationListener from './components/notifications/NotificationListener';
 import { Toaster } from './components/ui/toaster';
 
 function App() {
@@ -53,7 +55,10 @@ function App() {
             element={
               <PrivateRoute>
                 <BusinessProvider>
-                  <DashboardLayout />
+                  <SocketProvider>
+                    <NotificationListener />
+                    <DashboardLayout />
+                  </SocketProvider>
                 </BusinessProvider>
               </PrivateRoute>
             }

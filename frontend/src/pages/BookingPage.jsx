@@ -10,7 +10,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import StatusBadge from '../components/appointments/StatusBadge';
-import { useToast } from '../hooks/use-toast';
+import { toastSuccess, toastError } from '../utils/toastHelpers';
 import {
   getBusinessBySlug,
   getAvailableSlots,
@@ -47,7 +47,6 @@ const STEPS = {
 const BookingPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // Data state
   const [business, setBusiness] = useState(null);
@@ -96,18 +95,14 @@ const BookingPage = () => {
       } catch (err) {
         console.error('Error fetching business:', err);
         setError(err.response?.data?.message || 'Failed to load business information');
-        toast({
-          title: 'Error',
-          description: 'Could not load business information',
-          variant: 'destructive',
-        });
+        toastError('Error', 'Could not load business information');
       } finally {
         setLoading(false);
       }
     };
 
     fetchBusiness();
-  }, [slug, toast]);
+  }, [slug]);
 
   // Fetch available slots when date is selected
   useEffect(() => {
@@ -123,20 +118,12 @@ const BookingPage = () => {
         if (response.success) {
           setAvailableSlots(response.data.slots || []);
           if (!response.data.available) {
-            toast({
-              title: 'No slots available',
-              description: response.data.reason || 'Please select a different date',
-              variant: 'destructive',
-            });
+            toastError('No slots available', response.data.reason || 'Please select a different date');
           }
         }
       } catch (err) {
         console.error('Error fetching slots:', err);
-        toast({
-          title: 'Error',
-          description: 'Failed to load available time slots',
-          variant: 'destructive',
-        });
+        toastError('Error', 'Failed to load available time slots');
         setAvailableSlots([]);
       } finally {
         setSlotsLoading(false);
@@ -144,7 +131,7 @@ const BookingPage = () => {
     };
 
     fetchSlots();
-  }, [selectedDate, selectedService, selectedEmployee, slug, toast]);
+  }, [selectedDate, selectedService, selectedEmployee, slug]);
 
   const handleServiceSelect = async (service) => {
     setSelectedService(service);
@@ -207,29 +194,17 @@ const BookingPage = () => {
     const { firstName, lastName, email, phone } = clientInfo;
 
     if (!firstName.trim() || !lastName.trim()) {
-      toast({
-        title: 'Missing information',
-        description: 'Please enter your first and last name',
-        variant: 'destructive',
-      });
+      toastError('Missing information', 'Please enter your first and last name');
       return false;
     }
 
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast({
-        title: 'Invalid email',
-        description: 'Please enter a valid email address',
-        variant: 'destructive',
-      });
+      toastError('Invalid email', 'Please enter a valid email address');
       return false;
     }
 
     if (!phone.trim()) {
-      toast({
-        title: 'Missing phone number',
-        description: 'Please enter your phone number',
-        variant: 'destructive',
-      });
+      toastError('Missing phone number', 'Please enter your phone number');
       return false;
     }
 
@@ -264,19 +239,11 @@ const BookingPage = () => {
       if (response.success) {
         setBookingResult(response.data);
         setCurrentStep(STEPS.SUCCESS);
-        toast({
-          title: 'Success!',
-          description: 'Your appointment has been booked',
-          variant: 'success',
-        });
+        toastSuccess('Success!', 'Your appointment has been booked');
       }
     } catch (err) {
       console.error('Booking error:', err);
-      toast({
-        title: 'Booking failed',
-        description: err.response?.data?.message || 'Failed to create booking. Please try again.',
-        variant: 'destructive',
-      });
+      toastError('Booking failed', err.response?.data?.message || 'Failed to create booking. Please try again.');
     } finally {
       setSubmitting(false);
     }
