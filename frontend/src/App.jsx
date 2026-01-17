@@ -1,8 +1,10 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { BusinessProvider } from './context/BusinessContext';
 import { SocketProvider } from './context/SocketContext';
 import PrivateRoute from './components/PrivateRoute';
+import RootRedirect from './components/RootRedirect';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import BusinessSetup from './pages/BusinessSetup';
@@ -21,12 +23,44 @@ import ConfirmAppointment from './pages/ConfirmAppointment';
 import NotificationListener from './components/notifications/NotificationListener';
 import { Toaster } from './components/ui/toaster';
 
+// Lazy load landing pages for performance
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+  </div>
+);
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Public routes */}
+          {/* Root - Auth-based routing */}
+          <Route path="/" element={<RootRedirect />} />
+
+          {/* Public marketing pages */}
+          <Route
+            path="/about"
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <About />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <Contact />
+              </Suspense>
+            }
+          />
+
+          {/* Public auth pages */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -45,9 +79,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
-          {/* Redirect root to dashboard */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
           {/* Protected dashboard routes */}
           <Route
@@ -74,8 +105,8 @@ function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
 
-          {/* Catch all - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Catch all - redirect to root */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster />
       </Router>

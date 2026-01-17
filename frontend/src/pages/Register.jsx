@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Mail, Lock, User, Phone, AlertCircle, Calendar } from 'lucide-react';
+import { Mail, Lock, User, Phone, AlertCircle, Calendar, Check, Quote, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SEOHead from '../components/seo/SEOHead';
+import { Badge } from '../components/ui/badge';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -102,21 +104,107 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Calendar className="h-10 w-10 text-primary" />
-            <h1 className="text-4xl font-bold">AppointMe</h1>
-          </div>
-          <p className="text-muted-foreground">
-            Create your account and start managing appointments
-          </p>
-        </div>
+    <>
+      <SEOHead
+        title="Sign Up Free - TimeSnap.io"
+        description="Create your free TimeSnap account. Join 1,000+ businesses managing appointments smarter. Setup in 2 minutes, no credit card required."
+        keywords="sign up free, create account, free appointment booking, business registration, timesnap signup"
+      />
 
-        {/* Register Card */}
-        <Card>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
+        {/* Two-column layout for desktop */}
+        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+          {/* Left Column - Benefits Sidebar (40%) */}
+          <div className="hidden lg:block lg:col-span-2 space-y-8">
+            {/* Header */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar className="h-8 w-8 text-primary" />
+                <h2 className="text-3xl font-bold">TimeSnap.io</h2>
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                Join 1,000+ businesses managing appointments smarter
+              </h3>
+              <Badge className="bg-green-500 hover:bg-green-600">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Free During Beta
+              </Badge>
+            </div>
+
+            {/* Benefits Checklist */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Check className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Free during beta launch</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Check className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Setup in under 2 minutes</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Check className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Unlimited appointments</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Check className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">No credit card required</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Check className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Email & SMS notifications</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Check className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Real-time analytics</span>
+              </div>
+            </div>
+
+            {/* Testimonial */}
+            <Card className="border-2 border-primary/20 bg-white/50">
+              <CardContent className="pt-6">
+                <Quote className="h-8 w-8 text-primary/20 mb-3" />
+                <p className="text-gray-700 mb-4 italic">
+                  "TimeSnap cut our booking time in half. Setup was incredibly easy!"
+                </p>
+                <div>
+                  <p className="font-semibold">Maria S.</p>
+                  <p className="text-sm text-muted-foreground">Salon Owner</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Registration Form (60%) */}
+          <div className="lg:col-span-3">
+            {/* Mobile Header */}
+            <div className="lg:hidden text-center mb-8">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Calendar className="h-10 w-10 text-primary" />
+                <h1 className="text-4xl font-bold">TimeSnap.io</h1>
+              </div>
+              <p className="text-muted-foreground mb-2">
+                Create your account and start managing appointments
+              </p>
+              <Badge className="bg-green-500 hover:bg-green-600">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Free During Beta
+              </Badge>
+            </div>
+
+            {/* Register Card */}
+            <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl">Create Account</CardTitle>
             <CardDescription>
@@ -247,14 +335,16 @@ const Register = () => {
               </div>
             </form>
           </CardContent>
-        </Card>
+            </Card>
 
-        {/* Footer */}
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 AppointMe. All rights reserved.</p>
+            {/* Footer */}
+            <div className="mt-8 text-center text-sm text-muted-foreground">
+              <p>&copy; 2026 TimeSnap.io. All rights reserved.</p>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
