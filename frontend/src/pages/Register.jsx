@@ -69,8 +69,6 @@ const Register = () => {
       await register(registerData);
       navigate('/dashboard');
     } catch (err) {
-      console.error('Registration error:', err);
-
       // Extract detailed error message from backend
       let errorMessage = 'Failed to create account. Please try again.';
 
@@ -87,6 +85,25 @@ const Register = () => {
         else if (err.response.data.error) {
           errorMessage = err.response.data.error;
         }
+      }
+
+      // Sanitize error message - never display database/system errors
+      const sensitivePatterns = [
+        /database/i,
+        /connection/i,
+        /sql/i,
+        /query/i,
+        /errno/i,
+        /econnrefused/i,
+        /timeout/i,
+        /postgresql/i,
+        /mysql/i,
+        /mongodb/i,
+      ];
+
+      const hasSensitiveInfo = sensitivePatterns.some(pattern => pattern.test(errorMessage));
+      if (hasSensitiveInfo) {
+        errorMessage = 'Service temporarily unavailable. Please try again later.';
       }
 
       setError(errorMessage);

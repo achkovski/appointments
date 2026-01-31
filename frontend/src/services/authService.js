@@ -46,8 +46,6 @@ export const login = async (email, password) => {
 export const logout = async () => {
   try {
     await api.post('/auth/logout');
-  } catch (error) {
-    console.error('Logout error:', error);
   } finally {
     // Clear localStorage regardless of API response
     localStorage.removeItem('token');

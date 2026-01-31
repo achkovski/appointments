@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
           setIsAuthenticated(false);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        // Silent fail - authentication initialization failed
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       return response;
     } catch (error) {
-      console.error('Login error:', error);
+      // Re-throw error to be handled by component
       throw error;
     }
   };
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       return response;
     } catch (error) {
-      console.error('Registration error:', error);
+      // Re-throw error to be handled by component
       throw error;
     }
   };
@@ -90,7 +90,6 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
-      console.error('Logout error:', error);
       // Still clear state even if API call fails
       setUser(null);
       setIsAuthenticated(false);

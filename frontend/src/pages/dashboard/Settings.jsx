@@ -12,6 +12,7 @@ import {
   Lock,
   CheckCircle,
   AlertCircle,
+  Zap,
 } from 'lucide-react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
@@ -98,6 +99,11 @@ const Settings = () => {
 
   const [passwordErrors, setPasswordErrors] = useState({});
 
+  // Advanced Settings
+  const [advancedSettings, setAdvancedSettings] = useState({
+    autoRedirectToDashboard: false,
+  });
+
   // Auto-complete state
   const [autoCompleteLoading, setAutoCompleteLoading] = useState(false);
   const [autoCompleteResult, setAutoCompleteResult] = useState(null);
@@ -138,6 +144,9 @@ const Settings = () => {
         email: user.email || '',
         phone: user.phone || '',
       });
+      setAdvancedSettings({
+        autoRedirectToDashboard: user.settings?.autoRedirectToDashboard ?? false,
+      });
     }
   }, [user]);
 
@@ -158,6 +167,11 @@ const Settings = () => {
 
   const handleAccountSettingChange = (field, value) => {
     setAccountSettings(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+  };
+
+  const handleAdvancedSettingChange = (field, value) => {
+    setAdvancedSettings(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
 
@@ -208,6 +222,29 @@ const Settings = () => {
     } catch (err) {
       console.error('Error updating account:', err);
       setError(err.response?.data?.message || 'Failed to update account information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveAdvancedSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await updateUser(user.id, {
+        settings: advancedSettings,
+      });
+
+      await updateUserContext(response.user || response);
+
+      setHasChanges(false);
+      setSuccess('Advanced settings updated successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error updating advanced settings:', err);
+      setError(err.response?.data?.message || 'Failed to update advanced settings');
     } finally {
       setLoading(false);
     }
@@ -816,6 +853,45 @@ const Settings = () => {
                   {loading ? 'Changing...' : 'Change Password'}
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Advanced Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Advanced Settings
+            </CardTitle>
+            <CardDescription>
+              Power user options and customizations
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="font-medium">Auto-redirect to dashboard</p>
+                <p className="text-sm text-muted-foreground">
+                  When enabled, you'll be automatically redirected to your dashboard when visiting the homepage.
+                  By default, the homepage remains accessible so you can view updates, announcements, and your booking page link.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={advancedSettings.autoRedirectToDashboard}
+                  onChange={(e) => handleAdvancedSettingChange('autoRedirectToDashboard', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
+
+            <div className="pt-4">
+              <Button onClick={handleSaveAdvancedSettings} disabled={!hasChanges || loading}>
+                {loading ? 'Saving...' : 'Save Advanced Settings'}
+              </Button>
             </div>
           </CardContent>
         </Card>

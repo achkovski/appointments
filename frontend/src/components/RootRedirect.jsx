@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import Landing from '../pages/Landing';
 
 const RootRedirect = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -17,12 +17,13 @@ const RootRedirect = () => {
     );
   }
 
-  // Authenticated users go to dashboard
-  if (isAuthenticated) {
+  // Check if user has auto-redirect enabled (for power users)
+  if (isAuthenticated && user?.settings?.autoRedirectToDashboard) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Non-authenticated users see the landing page
+  // All users (authenticated and non-authenticated) see the landing page
+  // Authenticated users will see "Go to Dashboard" button in the header
   return <Landing />;
 };
 

@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Calendar } from 'lucide-react';
+import { Calendar, LayoutDashboard } from 'lucide-react';
 import { Button } from '../ui/button';
+import { useAuth } from '../../context/AuthContext';
 
 const PublicHeader = () => {
+  const { isAuthenticated } = useAuth();
+
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -50,16 +53,27 @@ const PublicHeader = () => {
 
           {/* CTA Buttons */}
           <div className="flex items-center gap-3">
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                Login
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button size="sm">
-                Sign Up Free
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/dashboard">
+                <Button size="sm" className="gap-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button size="sm">
+                    Sign Up Free
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

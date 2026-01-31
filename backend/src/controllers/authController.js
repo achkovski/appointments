@@ -96,7 +96,6 @@ export const register = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error registering user',
-      message: error.message,
     });
   }
 };
@@ -156,8 +155,14 @@ export const login = async (req, res) => {
       }
     }
 
-    // Return user without password
-    const { passwordHash, emailVerificationToken, resetPasswordToken, ...userWithoutPassword } = user;
+    // Return user without sensitive fields
+    const {
+      passwordHash,
+      emailVerificationToken,
+      resetPasswordToken,
+      resetPasswordExpires,
+      ...userWithoutPassword
+    } = user;
 
     res.status(200).json({
       success: true,
@@ -171,8 +176,7 @@ export const login = async (req, res) => {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      error: 'Error logging in',
-      message: error.message,
+      error: 'An error occurred during login. Please try again later.',
     });
   }
 };
@@ -194,6 +198,8 @@ export const getMe = async (req, res) => {
         role: true,
         phone: true,
         emailVerified: true,
+        hasCompletedSetup: true,
+        settings: true,
         createdAt: true,
       },
     });
@@ -207,7 +213,6 @@ export const getMe = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching user',
-      message: error.message,
     });
   }
 };
@@ -264,7 +269,6 @@ export const verifyEmail = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error verifying email',
-      message: error.message,
     });
   }
 };
@@ -335,7 +339,6 @@ export const forgotPassword = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error processing password reset request',
-      message: error.message,
     });
   }
 };
@@ -404,7 +407,6 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error resetting password',
-      message: error.message,
     });
   }
 };

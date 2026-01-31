@@ -32,6 +32,7 @@ export const users = pgTable("users", {
 	resetPasswordToken: text("reset_password_token"),
 	resetPasswordExpires: timestamp("reset_password_expires", { precision: 3, mode: 'string' }),
 	hasCompletedSetup: boolean("has_completed_setup").default(false).notNull(),
+	settings: jsonb(),
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull(),
 }, (table) => [
