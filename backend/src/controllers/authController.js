@@ -4,7 +4,7 @@ import { eq, and, gt } from 'drizzle-orm';
 import db from '../config/database.js';
 import { users, businesses } from '../config/schema.js';
 import { generateJWT, generateRandomToken, hashToken } from '../utils/tokenGenerator.js';
-import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
+import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService.js';
 
 // Generate UUID for new records
 const generateId = () => crypto.randomUUID();
@@ -259,6 +259,14 @@ export const verifyEmail = async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
+
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(user.email, user.firstName);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Don't fail the verification if welcome email fails
+    }
 
     res.status(200).json({
       success: true,

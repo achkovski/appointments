@@ -7,6 +7,7 @@ import PrivateRoute from './components/PrivateRoute';
 import RootRedirect from './components/RootRedirect';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
 import BusinessSetup from './pages/BusinessSetup';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Overview from './pages/dashboard/Overview';
@@ -63,6 +64,7 @@ function App() {
           {/* Public auth pages */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Public booking routes */}
           <Route path="/book/:slug" element={<BookingPage />} />

@@ -270,24 +270,31 @@ export const createGuestAppointment = async (req, res) => {
     await db.insert(appointments).values(newAppointment);
 
     // Send confirmation email to client
-    try {
-      await sendAppointmentConfirmationEmail({
-        to: clientEmail,
-        clientName: `${clientFirstName} ${clientLastName}`,
-        businessName: businessData.businessName,
-        serviceName: serviceData.name,
-        appointmentDate,
-        startTime,
-        endTime,
-        requiresConfirmation: requireEmailConfirmation,
-        confirmationToken: emailConfirmationToken,
-        businessAddress: businessData.address,
-        businessPhone: businessData.phone,
-        businessEmail: businessData.email
-      });
-    } catch (emailError) {
-      console.error('Client confirmation email failed:', emailError);
-      // Don't fail the booking if email fails
+    // Only send email if:
+    // 1. Email confirmation is required (client needs to verify), OR
+    // 2. Auto-confirm is enabled (appointment is immediately confirmed)
+    // If both are false (manual business approval), don't send email yet -
+    // we'll send it when business manually confirms
+    if (requireEmailConfirmation || autoConfirm) {
+      try {
+        await sendAppointmentConfirmationEmail({
+          to: clientEmail,
+          clientName: `${clientFirstName} ${clientLastName}`,
+          businessName: businessData.businessName,
+          serviceName: serviceData.name,
+          appointmentDate,
+          startTime,
+          endTime,
+          requiresConfirmation: requireEmailConfirmation,
+          confirmationToken: emailConfirmationToken,
+          businessAddress: businessData.address,
+          businessPhone: businessData.phone,
+          businessEmail: businessData.email
+        });
+      } catch (emailError) {
+        console.error('Client confirmation email failed:', emailError);
+        // Don't fail the booking if email fails
+      }
     }
 
     // Send alert email to business owner
@@ -446,6 +453,29 @@ export const confirmAppointmentEmail = async (req, res) => {
     const service = await db.select().from(services)
       .where(eq(services.id, apt.serviceId))
       .limit(1);
+
+    // Send confirmation email if appointment is now confirmed (autoConfirm = true)
+    if (autoConfirm) {
+      try {
+        await sendAppointmentConfirmationEmail({
+          to: apt.clientEmail,
+          clientName: `${apt.clientFirstName} ${apt.clientLastName}`,
+          businessName: businessData.businessName,
+          serviceName: service.length > 0 ? service[0].name : 'Service',
+          appointmentDate: apt.appointmentDate,
+          startTime: apt.startTime,
+          endTime: apt.endTime,
+          requiresConfirmation: false,
+          confirmationToken: null,
+          businessAddress: businessData.address,
+          businessPhone: businessData.phone,
+          businessEmail: businessData.email
+        });
+      } catch (emailError) {
+        console.error('Failed to send confirmation email after email verification:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
 
     // Format appointment details for frontend
     const appointmentDetails = {

@@ -1018,6 +1018,187 @@ This message was sent via ${process.env.APP_NAME || 'Appointments App'} on behal
   }
 };
 
+/**
+ * Send welcome email after email verification
+ * @param {string} email - Recipient email
+ * @param {string} firstName - User first name
+ * @returns {Promise<void>}
+ */
+export const sendWelcomeEmail = async (email, firstName) => {
+  const dashboardUrl = `${process.env.CLIENT_URL}/dashboard`;
+  const supportEmail = process.env.SUPPORT_EMAIL || 'support@timesnap.io';
+
+  const mailOptions = {
+    from: `"${process.env.APP_NAME || 'TimeSnap.io'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    to: email,
+    subject: 'Welcome to TimeSnap.io - Let\'s Get Started!',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 40px 20px; text-align: center; border-radius: 5px 5px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
+            .welcome-box { background-color: white; padding: 25px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4F46E5; }
+            .features { background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .feature-item { margin: 15px 0; padding-left: 30px; position: relative; }
+            .feature-item:before { content: "✓"; position: absolute; left: 0; color: #10B981; font-weight: bold; font-size: 18px; }
+            .cta-button { display: inline-block; background-color: #4F46E5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+            .help-section { background-color: #DBEAFE; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+            .divider { border-top: 1px solid #e5e7eb; margin: 25px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 32px;">Welcome to TimeSnap.io!</h1>
+              <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your journey to effortless appointment management starts here</p>
+            </div>
+            <div class="content">
+              <div class="welcome-box">
+                <h2 style="margin-top: 0; color: #1f2937;">Hello ${firstName},</h2>
+                <p>We're excited to have you on board! Your email has been verified and your account is now active.</p>
+                <p><strong>TimeSnap.io</strong> is your all-in-one solution for managing appointments, bookings, and client relationships. Whether you run a salon, dental practice, consulting business, or any service-based operation, we've got you covered.</p>
+              </div>
+
+              <div class="features">
+                <h3 style="color: #1f2937; margin-top: 0;">What you can do with TimeSnap.io:</h3>
+                <div class="feature-item">
+                  <strong>Create Your Business Profile</strong> - Set up your unique booking page with custom branding
+                </div>
+                <div class="feature-item">
+                  <strong>Manage Services</strong> - Add and configure the services you offer with prices and durations
+                </div>
+                <div class="feature-item">
+                  <strong>Set Your Availability</strong> - Define your working hours, breaks, and time off
+                </div>
+                <div class="feature-item">
+                  <strong>Accept Bookings 24/7</strong> - Let clients book appointments anytime, from anywhere
+                </div>
+                <div class="feature-item">
+                  <strong>Track & Manage</strong> - View all appointments in one dashboard with powerful analytics
+                </div>
+                <div class="feature-item">
+                  <strong>Automated Notifications</strong> - Send confirmations and reminders automatically
+                </div>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${dashboardUrl}" class="cta-button">Go to Dashboard</a>
+              </div>
+
+              <div class="divider"></div>
+
+              <div class="help-section">
+                <h3 style="color: #1f2937; margin-top: 0;">Need Help Getting Started?</h3>
+                <p style="margin-bottom: 10px;"><strong>We're here to help!</strong></p>
+                <p>Our support team is ready to assist you with:</p>
+                <ul style="margin: 10px 0;">
+                  <li>Setting up your business profile</li>
+                  <li>Configuring your services and availability</li>
+                  <li>Customizing your booking page</li>
+                  <li>Any questions you might have</li>
+                </ul>
+                <p style="margin-top: 15px;">
+                  <strong>Contact us:</strong> <a href="mailto:${supportEmail}" style="color: #4F46E5;">${supportEmail}</a>
+                </p>
+              </div>
+
+              <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #1f2937;">Quick Start Guide:</h4>
+                <ol style="margin: 10px 0; padding-left: 20px;">
+                  <li>Complete your business setup in the dashboard</li>
+                  <li>Add your services with pricing and duration</li>
+                  <li>Set your working hours and availability</li>
+                  <li>Share your unique booking link with clients</li>
+                  <li>Start accepting appointments!</li>
+                </ol>
+              </div>
+
+              <p style="text-align: center; color: #6b7280; font-style: italic;">
+                "Simplify scheduling, amplify your business"
+              </p>
+            </div>
+            <div class="footer">
+              <p><strong>TimeSnap.io</strong> - Modern Appointment Management</p>
+              <p>&copy; ${new Date().getFullYear()} TimeSnap.io. All rights reserved.</p>
+              <p style="margin-top: 15px;">
+                <a href="${process.env.CLIENT_URL}/about" style="color: #4F46E5; text-decoration: none; margin: 0 10px;">About Us</a>
+                <a href="${process.env.CLIENT_URL}/contact" style="color: #4F46E5; text-decoration: none; margin: 0 10px;">Contact</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+      Welcome to TimeSnap.io!
+
+      Hello ${firstName},
+
+      We're excited to have you on board! Your email has been verified and your account is now active.
+
+      TimeSnap.io is your all-in-one solution for managing appointments, bookings, and client relationships.
+
+      What you can do with TimeSnap.io:
+      - Create Your Business Profile - Set up your unique booking page
+      - Manage Services - Add services with prices and durations
+      - Set Your Availability - Define working hours and time off
+      - Accept Bookings 24/7 - Let clients book anytime, anywhere
+      - Track & Manage - View all appointments in one dashboard
+      - Automated Notifications - Send confirmations and reminders
+
+      Go to Dashboard: ${dashboardUrl}
+
+      NEED HELP GETTING STARTED?
+      Our support team is ready to assist you with setup and configuration.
+      Contact us: ${supportEmail}
+
+      Quick Start Guide:
+      1. Complete your business setup in the dashboard
+      2. Add your services with pricing and duration
+      3. Set your working hours and availability
+      4. Share your unique booking link with clients
+      5. Start accepting appointments!
+
+      "Simplify scheduling, amplify your business"
+
+      TimeSnap.io - Modern Appointment Management
+      © ${new Date().getFullYear()} TimeSnap.io. All rights reserved.
+    `,
+  };
+
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✉️  Welcome email sent:', info.messageId);
+
+      if (process.env.NODE_ENV !== 'production') {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        if (previewUrl) {
+          console.log('📧 Preview URL:', previewUrl);
+        }
+      }
+
+      return info;
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('📧 [EMAIL] Welcome email (failed to send):');
+        console.log('   To:', email);
+      }
+      throw error;
+    }
+  } else {
+    console.log('📧 [EMAIL] Welcome email (not sent - no email config):');
+    console.log('   To:', email);
+    console.log('   Name:', firstName);
+    return { messageId: 'dev-mode-no-email' };
+  }
+};
+
 export default {
   sendVerificationEmail,
   sendPasswordResetEmail,
@@ -1027,4 +1208,5 @@ export default {
   sendRescheduleEmail,
   sendBusinessAlertEmail,
   sendContactEmail,
+  sendWelcomeEmail,
 };
