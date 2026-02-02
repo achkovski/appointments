@@ -340,8 +340,8 @@ const Employees = () => {
           {employees.map((employee) => {
             const contactInfo = getEmployeeContactInfo(employee);
             return (
-              <Card key={employee.id} className={!employee.isActive ? 'opacity-60' : ''}>
-                <CardHeader className="pb-3">
+              <Card key={employee.id} className={`flex flex-col h-full ${!employee.isActive ? 'opacity-60' : ''}`}>
+                <CardHeader className="pb-3 flex-none">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-lg">{employee.name}</CardTitle>
@@ -349,7 +349,7 @@ const Employees = () => {
                         <Badge variant="secondary">Inactive</Badge>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 min-h-[2rem]">
                       {employee.services?.length > 0 ? (
                         employee.services.map(service => (
                           <Badge key={service.id} variant="outline" className="text-xs">
@@ -362,8 +362,8 @@ const Employees = () => {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
+                <CardContent className="flex flex-col flex-1 pt-0">
+                  <div className="space-y-2 mb-4 min-h-[4rem]">
                     {contactInfo.email && (
                       <div className="flex items-center gap-3 text-sm">
                         <Mail className="h-4 w-4 text-muted-foreground" />
@@ -382,15 +382,17 @@ const Employees = () => {
                         )}
                       </div>
                     )}
-                    {employee.maxDailyAppointments > 0 && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>Max {employee.maxDailyAppointments} appointments/day</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-3 text-sm">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        {employee.maxDailyAppointments > 0
+                          ? `Max ${employee.maxDailyAppointments} appointments/day`
+                          : 'No max appointments set'}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex gap-2 pt-3 border-t flex-wrap">
+                  <div className="flex gap-2 pt-3 border-t flex-wrap mt-auto">
                     <Button
                       variant="outline"
                       size="sm"

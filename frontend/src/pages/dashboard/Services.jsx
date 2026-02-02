@@ -262,8 +262,8 @@ const Services = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
-            <Card key={service.id} className={!service.isActive ? 'opacity-60' : ''}>
-              <CardHeader className="pb-3">
+            <Card key={service.id} className={`flex flex-col h-full ${!service.isActive ? 'opacity-60' : ''}`}>
+              <CardHeader className="pb-3 flex-none">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-lg">{service.name}</CardTitle>
@@ -271,15 +271,13 @@ const Services = () => {
                       <Badge variant="secondary">Inactive</Badge>
                     )}
                   </div>
-                  {service.description && (
-                    <CardDescription className="line-clamp-2">
-                      {service.description}
-                    </CardDescription>
-                  )}
+                  <CardDescription className="line-clamp-2 min-h-[2.5rem]">
+                    {service.description || '\u00A0'}
+                  </CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
+              <CardContent className="flex flex-col flex-1 pt-0">
+                <div className="space-y-3 mb-4">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-5 h-5">
                       <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -296,7 +294,7 @@ const Services = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-3 border-t">
+                <div className="flex gap-2 pt-3 border-t mt-auto">
                   <Button
                     variant="outline"
                     size="sm"
