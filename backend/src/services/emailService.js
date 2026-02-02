@@ -1031,142 +1031,482 @@ export const sendWelcomeEmail = async (email, firstName) => {
   const mailOptions = {
     from: `"${process.env.APP_NAME || 'TimeSnap.io'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Welcome to TimeSnap.io - Let\'s Get Started!',
+    subject: '🎉 Welcome to TimeSnap.io - Your Account is Ready!',
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 40px 20px; text-align: center; border-radius: 5px 5px 0 0; }
-            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
-            .welcome-box { background-color: white; padding: 25px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4F46E5; }
-            .features { background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .feature-item { margin: 15px 0; padding-left: 30px; position: relative; }
-            .feature-item:before { content: "✓"; position: absolute; left: 0; color: #10B981; font-weight: bold; font-size: 18px; }
-            .cta-button { display: inline-block; background-color: #4F46E5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
-            .help-section { background-color: #DBEAFE; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
-            .divider { border-top: 1px solid #e5e7eb; margin: 25px 0; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              line-height: 1.6;
+              color: #1f2937;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              padding: 20px 0;
+            }
+            .email-wrapper {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #ffffff;
+              border-radius: 16px;
+              overflow: hidden;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 50px 30px;
+              text-align: center;
+              position: relative;
+              overflow: hidden;
+            }
+            .header:before {
+              content: '';
+              position: absolute;
+              top: -50%;
+              right: -50%;
+              width: 200%;
+              height: 200%;
+              background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+              animation: pulse 15s ease-in-out infinite;
+            }
+            @keyframes pulse {
+              0%, 100% { transform: scale(1); opacity: 0.5; }
+              50% { transform: scale(1.1); opacity: 0.8; }
+            }
+            .logo-circle {
+              display: inline-block;
+              width: 80px;
+              height: 80px;
+              background: rgba(255,255,255,0.2);
+              backdrop-filter: blur(10px);
+              border-radius: 50%;
+              margin-bottom: 20px;
+              border: 3px solid rgba(255,255,255,0.3);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 36px;
+              font-weight: bold;
+              position: relative;
+              z-index: 1;
+            }
+            .header h1 {
+              font-size: 36px;
+              font-weight: 800;
+              margin: 0 0 10px 0;
+              position: relative;
+              z-index: 1;
+              text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            }
+            .header p {
+              font-size: 18px;
+              opacity: 0.95;
+              position: relative;
+              z-index: 1;
+            }
+            .content {
+              padding: 40px 30px;
+              background-color: #ffffff;
+            }
+            .greeting {
+              background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+              padding: 30px;
+              border-radius: 12px;
+              margin-bottom: 30px;
+              border-left: 5px solid #667eea;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            }
+            .greeting h2 {
+              color: #4338ca;
+              font-size: 28px;
+              margin-bottom: 15px;
+              font-weight: 700;
+            }
+            .greeting p {
+              color: #4b5563;
+              font-size: 16px;
+              line-height: 1.7;
+            }
+            .features-grid {
+              display: grid;
+              grid-template-columns: 1fr;
+              gap: 15px;
+              margin: 30px 0;
+            }
+            .feature-card {
+              background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+              padding: 20px;
+              border-radius: 10px;
+              border: 2px solid #e5e7eb;
+              transition: all 0.3s ease;
+              position: relative;
+              overflow: hidden;
+            }
+            .feature-card:before {
+              content: '';
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 5px;
+              height: 100%;
+              background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            }
+            .feature-icon {
+              display: inline-block;
+              width: 40px;
+              height: 40px;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              border-radius: 10px;
+              text-align: center;
+              line-height: 40px;
+              font-size: 20px;
+              margin-bottom: 10px;
+              box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+            }
+            .feature-card h4 {
+              color: #1f2937;
+              font-size: 16px;
+              font-weight: 700;
+              margin-bottom: 5px;
+            }
+            .feature-card p {
+              color: #6b7280;
+              font-size: 14px;
+              line-height: 1.5;
+              margin: 0;
+            }
+            .cta-section {
+              text-align: center;
+              margin: 40px 0;
+              padding: 30px;
+              background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+              border-radius: 12px;
+              box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+            }
+            .cta-button {
+              display: inline-block;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 16px 40px;
+              text-decoration: none;
+              border-radius: 50px;
+              font-weight: 700;
+              font-size: 16px;
+              box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+              transition: all 0.3s ease;
+            }
+            .quick-start {
+              background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+              padding: 25px;
+              border-radius: 12px;
+              margin: 30px 0;
+              border-left: 5px solid #10b981;
+            }
+            .quick-start h3 {
+              color: #065f46;
+              font-size: 20px;
+              margin-bottom: 15px;
+              font-weight: 700;
+            }
+            .step {
+              padding: 12px 0 12px 35px;
+              position: relative;
+              color: #047857;
+              font-size: 15px;
+              font-weight: 500;
+            }
+            .step:before {
+              content: attr(data-number);
+              position: absolute;
+              left: 0;
+              top: 50%;
+              transform: translateY(-50%);
+              width: 26px;
+              height: 26px;
+              background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+              color: white;
+              border-radius: 50%;
+              text-align: center;
+              line-height: 26px;
+              font-size: 12px;
+              font-weight: 700;
+              box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            }
+            .help-box {
+              background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+              padding: 25px;
+              border-radius: 12px;
+              margin: 30px 0;
+              border: 2px solid #93c5fd;
+            }
+            .help-box h3 {
+              color: #1e40af;
+              font-size: 20px;
+              margin-bottom: 10px;
+              font-weight: 700;
+            }
+            .help-box p {
+              color: #1e3a8a;
+              font-size: 15px;
+              margin: 10px 0;
+            }
+            .contact-info {
+              background: white;
+              padding: 15px;
+              border-radius: 8px;
+              margin-top: 15px;
+              border: 1px solid #bfdbfe;
+            }
+            .contact-info a {
+              color: #667eea;
+              text-decoration: none;
+              font-weight: 600;
+              font-size: 16px;
+            }
+            .quote-section {
+              text-align: center;
+              padding: 30px;
+              margin: 30px 0;
+              background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+              border-radius: 12px;
+              border-left: 5px solid #ec4899;
+            }
+            .quote-section p {
+              font-size: 20px;
+              font-style: italic;
+              color: #831843;
+              font-weight: 600;
+              margin: 0;
+            }
+            .footer {
+              background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+              color: #9ca3af;
+              padding: 30px;
+              text-align: center;
+            }
+            .footer-logo {
+              font-size: 24px;
+              font-weight: 800;
+              color: white;
+              margin-bottom: 10px;
+            }
+            .footer-links {
+              margin: 20px 0;
+            }
+            .footer-links a {
+              color: #a78bfa;
+              text-decoration: none;
+              margin: 0 15px;
+              font-weight: 500;
+              font-size: 14px;
+            }
+            .social-icons {
+              margin: 20px 0;
+            }
+            .social-icon {
+              display: inline-block;
+              width: 35px;
+              height: 35px;
+              background: rgba(167, 139, 250, 0.2);
+              border-radius: 50%;
+              margin: 0 8px;
+              line-height: 35px;
+              font-size: 16px;
+              color: #a78bfa;
+            }
+            .divider {
+              height: 1px;
+              background: linear-gradient(90deg, transparent 0%, #e5e7eb 50%, transparent 100%);
+              margin: 30px 0;
+            }
+            @media only screen and (max-width: 600px) {
+              .header h1 { font-size: 28px; }
+              .greeting h2 { font-size: 22px; }
+              .content { padding: 30px 20px; }
+            }
           </style>
         </head>
         <body>
-          <div class="container">
+          <div class="email-wrapper">
+            <!-- Header -->
             <div class="header">
-              <h1 style="margin: 0; font-size: 32px;">Welcome to TimeSnap.io!</h1>
-              <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your journey to effortless appointment management starts here</p>
+              <div class="logo-circle">⏰</div>
+              <h1>Welcome to TimeSnap.io!</h1>
+              <p>Your journey to effortless appointment management starts now</p>
             </div>
+
+            <!-- Content -->
             <div class="content">
-              <div class="welcome-box">
-                <h2 style="margin-top: 0; color: #1f2937;">Hello ${firstName},</h2>
-                <p>We're excited to have you on board! Your email has been verified and your account is now active.</p>
-                <p><strong>TimeSnap.io</strong> is your all-in-one solution for managing appointments, bookings, and client relationships. Whether you run a salon, dental practice, consulting business, or any service-based operation, we've got you covered.</p>
+              <!-- Greeting -->
+              <div class="greeting">
+                <h2>Hello ${firstName}! 👋</h2>
+                <p>We're thrilled to have you on board! Your email has been verified and your account is now <strong>active and ready to go</strong>.</p>
+                <p style="margin-top: 10px;">TimeSnap.io is your complete solution for managing appointments, bookings, and client relationships. Whether you're running a salon, dental practice, consulting business, or any service-based operation, we've built everything you need to succeed.</p>
               </div>
 
-              <div class="features">
-                <h3 style="color: #1f2937; margin-top: 0;">What you can do with TimeSnap.io:</h3>
-                <div class="feature-item">
-                  <strong>Create Your Business Profile</strong> - Set up your unique booking page with custom branding
+              <!-- Features Grid -->
+              <div class="features-grid">
+                <div class="feature-card">
+                  <div class="feature-icon">🏢</div>
+                  <h4>Create Your Business Profile</h4>
+                  <p>Set up your unique booking page with custom branding and make it yours</p>
                 </div>
-                <div class="feature-item">
-                  <strong>Manage Services</strong> - Add and configure the services you offer with prices and durations
+                <div class="feature-card">
+                  <div class="feature-icon">💼</div>
+                  <h4>Manage Services Effortlessly</h4>
+                  <p>Add and configure services with custom pricing, durations, and descriptions</p>
                 </div>
-                <div class="feature-item">
-                  <strong>Set Your Availability</strong> - Define your working hours, breaks, and time off
+                <div class="feature-card">
+                  <div class="feature-icon">📅</div>
+                  <h4>Set Your Availability</h4>
+                  <p>Define working hours, breaks, and time off with flexible scheduling</p>
                 </div>
-                <div class="feature-item">
-                  <strong>Accept Bookings 24/7</strong> - Let clients book appointments anytime, from anywhere
+                <div class="feature-card">
+                  <div class="feature-icon">🌍</div>
+                  <h4>Accept Bookings 24/7</h4>
+                  <p>Let clients book appointments anytime, anywhere, from any device</p>
                 </div>
-                <div class="feature-item">
-                  <strong>Track & Manage</strong> - View all appointments in one dashboard with powerful analytics
+                <div class="feature-card">
+                  <div class="feature-icon">📊</div>
+                  <h4>Track & Analyze</h4>
+                  <p>View appointments in one dashboard with powerful analytics insights</p>
                 </div>
-                <div class="feature-item">
-                  <strong>Automated Notifications</strong> - Send confirmations and reminders automatically
+                <div class="feature-card">
+                  <div class="feature-icon">🔔</div>
+                  <h4>Automated Notifications</h4>
+                  <p>Send confirmations and reminders automatically to reduce no-shows</p>
                 </div>
               </div>
 
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${dashboardUrl}" class="cta-button">Go to Dashboard</a>
+              <!-- CTA Section -->
+              <div class="cta-section">
+                <h3 style="color: #92400e; font-size: 22px; margin-bottom: 15px; font-weight: 700;">Ready to Get Started?</h3>
+                <p style="color: #78350f; margin-bottom: 20px; font-size: 16px;">Access your dashboard and start setting up your business profile today!</p>
+                <a href="${dashboardUrl}" class="cta-button">Launch Your Dashboard 🚀</a>
               </div>
 
               <div class="divider"></div>
 
-              <div class="help-section">
-                <h3 style="color: #1f2937; margin-top: 0;">Need Help Getting Started?</h3>
-                <p style="margin-bottom: 10px;"><strong>We're here to help!</strong></p>
-                <p>Our support team is ready to assist you with:</p>
-                <ul style="margin: 10px 0;">
+              <!-- Quick Start Guide -->
+              <div class="quick-start">
+                <h3>🎯 Your 5-Step Quick Start Guide</h3>
+                <div class="step" data-number="1">Complete your business setup in the dashboard</div>
+                <div class="step" data-number="2">Add your services with pricing and duration</div>
+                <div class="step" data-number="3">Set your working hours and availability</div>
+                <div class="step" data-number="4">Share your unique booking link with clients</div>
+                <div class="step" data-number="5">Start accepting appointments and grow your business!</div>
+              </div>
+
+              <!-- Help Section -->
+              <div class="help-box">
+                <h3>💬 Need Help Getting Started?</h3>
+                <p><strong>We're here for you!</strong> Our dedicated support team is ready to assist with:</p>
+                <ul style="color: #1e3a8a; margin: 15px 0 15px 20px; font-size: 14px;">
                   <li>Setting up your business profile</li>
-                  <li>Configuring your services and availability</li>
+                  <li>Configuring services and availability</li>
                   <li>Customizing your booking page</li>
+                  <li>Integrating with your existing workflow</li>
                   <li>Any questions you might have</li>
                 </ul>
-                <p style="margin-top: 15px;">
-                  <strong>Contact us:</strong> <a href="mailto:${supportEmail}" style="color: #4F46E5;">${supportEmail}</a>
-                </p>
+                <div class="contact-info">
+                  <strong style="color: #1e40af;">📧 Contact us:</strong>
+                  <a href="mailto:${supportEmail}">${supportEmail}</a>
+                </div>
               </div>
 
-              <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h4 style="margin-top: 0; color: #1f2937;">Quick Start Guide:</h4>
-                <ol style="margin: 10px 0; padding-left: 20px;">
-                  <li>Complete your business setup in the dashboard</li>
-                  <li>Add your services with pricing and duration</li>
-                  <li>Set your working hours and availability</li>
-                  <li>Share your unique booking link with clients</li>
-                  <li>Start accepting appointments!</li>
-                </ol>
+              <!-- Quote Section -->
+              <div class="quote-section">
+                <p>"Simplify scheduling, amplify your business" ✨</p>
               </div>
-
-              <p style="text-align: center; color: #6b7280; font-style: italic;">
-                "Simplify scheduling, amplify your business"
-              </p>
             </div>
+
+            <!-- Footer -->
             <div class="footer">
-              <p><strong>TimeSnap.io</strong> - Modern Appointment Management</p>
-              <p>&copy; ${new Date().getFullYear()} TimeSnap.io. All rights reserved.</p>
-              <p style="margin-top: 15px;">
-                <a href="${process.env.CLIENT_URL}/about" style="color: #4F46E5; text-decoration: none; margin: 0 10px;">About Us</a>
-                <a href="${process.env.CLIENT_URL}/contact" style="color: #4F46E5; text-decoration: none; margin: 0 10px;">Contact</a>
-              </p>
+              <div class="footer-logo">⏰ TimeSnap.io</div>
+              <p style="margin: 10px 0; font-size: 14px;">Modern Appointment Management Made Simple</p>
+
+              <div class="divider" style="background: linear-gradient(90deg, transparent 0%, #374151 50%, transparent 100%);"></div>
+
+              <div class="footer-links">
+                <a href="${process.env.CLIENT_URL}/about">About Us</a>
+                <a href="${process.env.CLIENT_URL}/contact">Contact</a>
+                <a href="${process.env.CLIENT_URL}/help">Help Center</a>
+              </div>
+
+              <p style="font-size: 13px; margin-top: 20px;">&copy; ${new Date().getFullYear()} TimeSnap.io. All rights reserved.</p>
             </div>
           </div>
         </body>
       </html>
     `,
     text: `
-      Welcome to TimeSnap.io!
+      🎉 WELCOME TO TIMESNAP.IO!
 
-      Hello ${firstName},
+      Hello ${firstName}! 👋
 
-      We're excited to have you on board! Your email has been verified and your account is now active.
+      We're thrilled to have you on board! Your email has been verified and your account is now active and ready to go.
 
-      TimeSnap.io is your all-in-one solution for managing appointments, bookings, and client relationships.
+      TimeSnap.io is your complete solution for managing appointments, bookings, and client relationships.
 
-      What you can do with TimeSnap.io:
-      - Create Your Business Profile - Set up your unique booking page
-      - Manage Services - Add services with prices and durations
-      - Set Your Availability - Define working hours and time off
-      - Accept Bookings 24/7 - Let clients book anytime, anywhere
-      - Track & Manage - View all appointments in one dashboard
-      - Automated Notifications - Send confirmations and reminders
+      ═══════════════════════════════════════
 
-      Go to Dashboard: ${dashboardUrl}
+      WHAT YOU CAN DO WITH TIMESNAP.IO:
 
-      NEED HELP GETTING STARTED?
-      Our support team is ready to assist you with setup and configuration.
-      Contact us: ${supportEmail}
+      🏢 Create Your Business Profile
+         Set up your unique booking page with custom branding
 
-      Quick Start Guide:
+      💼 Manage Services Effortlessly
+         Add and configure services with pricing and durations
+
+      📅 Set Your Availability
+         Define working hours, breaks, and time off
+
+      🌍 Accept Bookings 24/7
+         Let clients book appointments anytime, anywhere
+
+      📊 Track & Analyze
+         View appointments in one dashboard with analytics
+
+      🔔 Automated Notifications
+         Send confirmations and reminders automatically
+
+      ═══════════════════════════════════════
+
+      🚀 READY TO GET STARTED?
+
+      Access your dashboard: ${dashboardUrl}
+
+      ═══════════════════════════════════════
+
+      🎯 YOUR 5-STEP QUICK START GUIDE:
+
       1. Complete your business setup in the dashboard
       2. Add your services with pricing and duration
       3. Set your working hours and availability
       4. Share your unique booking link with clients
-      5. Start accepting appointments!
+      5. Start accepting appointments and grow your business!
 
-      "Simplify scheduling, amplify your business"
+      ═══════════════════════════════════════
 
-      TimeSnap.io - Modern Appointment Management
+      💬 NEED HELP GETTING STARTED?
+
+      We're here for you! Our support team is ready to assist with:
+      • Setting up your business profile
+      • Configuring services and availability
+      • Customizing your booking page
+      • Any questions you might have
+
+      📧 Contact us: ${supportEmail}
+
+      ═══════════════════════════════════════
+
+      "Simplify scheduling, amplify your business" ✨
+
+      ⏰ TimeSnap.io - Modern Appointment Management
       © ${new Date().getFullYear()} TimeSnap.io. All rights reserved.
     `,
   };

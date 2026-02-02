@@ -236,7 +236,21 @@ export const verifyEmail = async (req, res) => {
     // Hash the provided token to match with database
     const hashedToken = hashToken(token);
 
-    // Find user with this token
+    // First, check if user exists with this token (regardless of verification status)
+    const userWithToken = await db.query.users.findFirst({
+      where: eq(users.emailVerificationToken, hashedToken),
+    });
+
+    // If user with token exists and is already verified
+    if (userWithToken && userWithToken.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email address has already been verified',
+        alreadyVerified: true,
+      });
+    }
+
+    // Find user with this token who hasn't verified yet
     const user = await db.query.users.findFirst({
       where: and(
         eq(users.emailVerificationToken, hashedToken),
@@ -251,7 +265,7 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
-    // Update user to verified
+    // Update user to verified and clear the token
     await db.update(users)
       .set({
         emailVerified: true,
@@ -260,7 +274,7 @@ export const verifyEmail = async (req, res) => {
       })
       .where(eq(users.id, user.id));
 
-    // Send welcome email
+    // Send welcome email ONLY ONCE after successful verification
     try {
       await sendWelcomeEmail(user.email, user.firstName);
     } catch (emailError) {

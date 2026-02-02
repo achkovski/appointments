@@ -33,11 +33,19 @@ export default function VerifyEmail() {
           setMessage(response.data.error || 'Failed to verify email');
         }
       } catch (error) {
-        setStatus('error');
-        setMessage(
-          error.response?.data?.error ||
-          'An error occurred while verifying your email. The link may have expired.'
-        );
+        const errorData = error.response?.data;
+
+        // Handle already verified case
+        if (errorData?.alreadyVerified) {
+          setStatus('already-verified');
+          setMessage(errorData.error || 'This email address has already been verified');
+        } else {
+          setStatus('error');
+          setMessage(
+            errorData?.error ||
+            'An error occurred while verifying your email. The link may have expired.'
+          );
+        }
       }
     };
 
@@ -90,6 +98,32 @@ export default function VerifyEmail() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-green-800">
                   Welcome to TimeSnap.io! We've sent you a welcome email with helpful resources to get started.
+                </p>
+              </div>
+              <button
+                onClick={handleContinue}
+                className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
+              >
+                Continue to Login
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {status === 'already-verified' && (
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                <CheckCircle className="w-8 h-8 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Already Verified
+              </h2>
+              <p className="text-gray-600 mb-6">
+                {message}
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-800">
+                  Your email has already been verified. You can proceed to log in to your account.
                 </p>
               </div>
               <button
