@@ -385,30 +385,36 @@ const BookingPage = () => {
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {services.map((service) => (
-                  <Card key={service.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-                    <CardHeader>
+                  <Card key={service.id} className="cursor-pointer hover:shadow-lg transition-shadow flex flex-col h-full">
+                    <CardHeader className="flex-none">
                       <CardTitle>{service.name}</CardTitle>
-                      {service.description && (
-                        <CardDescription>{service.description}</CardDescription>
-                      )}
+                      <CardDescription className="min-h-[3rem]">
+                        {service.description || '\u00A0'}
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-5 h-5">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <span className="text-sm">{service.duration} minutes</span>
-                      </div>
-                      {service.price && (
+                    <CardContent className="flex flex-col flex-1 pt-0">
+                      <div className="space-y-3 mb-4">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center justify-center w-5 h-5">
-                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            <Clock className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          <span className="text-sm">${service.price}</span>
+                          <span className="text-sm">{service.duration} minutes</span>
                         </div>
-                      )}
+                        <div className="flex items-center gap-3 min-h-[1.5rem]">
+                          {service.price ? (
+                            <>
+                              <div className="flex items-center justify-center w-5 h-5">
+                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <span className="text-sm">${service.price}</span>
+                            </>
+                          ) : (
+                            <div className="w-5 h-5"></div>
+                          )}
+                        </div>
+                      </div>
                       <Button
-                        className="w-full mt-4"
+                        className="w-full mt-auto"
                         onClick={() => handleServiceSelect(service)}
                       >
                         Select Service
