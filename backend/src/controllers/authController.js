@@ -266,20 +266,29 @@ export const verifyEmail = async (req, res) => {
     }
 
     // Update user to verified and clear the token
-    await db.update(users)
+    // Only proceed if we actually updated a row (prevents race conditions)
+    const updateResult = await db.update(users)
       .set({
         emailVerified: true,
         emailVerificationToken: null,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, user.id));
+      .where(and(
+        eq(users.id, user.id),
+        eq(users.emailVerified, false),
+        eq(users.emailVerificationToken, hashedToken)
+      ))
+      .returning({ id: users.id });
 
-    // Send welcome email ONLY ONCE after successful verification
-    try {
-      await sendWelcomeEmail(user.email, user.firstName);
-    } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
-      // Don't fail the verification if welcome email fails
+    // Only send welcome email if we actually performed the update
+    // This prevents duplicate emails if the endpoint is called multiple times
+    if (updateResult.length > 0) {
+      try {
+        await sendWelcomeEmail(user.email, user.firstName);
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+        // Don't fail the verification if welcome email fails
+      }
     }
 
     res.status(200).json({

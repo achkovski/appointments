@@ -102,7 +102,7 @@ export default function VerifyEmail() {
               </div>
               <button
                 onClick={handleContinue}
-                className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 Continue to Login
                 <ArrowRight className="w-4 h-4" />
@@ -128,7 +128,7 @@ export default function VerifyEmail() {
               </div>
               <button
                 onClick={handleContinue}
-                className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 Continue to Login
                 <ArrowRight className="w-4 h-4" />
@@ -155,7 +155,7 @@ export default function VerifyEmail() {
               <div className="space-y-3">
                 <button
                   onClick={handleContinue}
-                  className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                  className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors"
                 >
                   Go to Login
                 </button>

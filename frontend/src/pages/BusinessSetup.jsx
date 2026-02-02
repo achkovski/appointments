@@ -234,17 +234,21 @@ const BusinessSetup = () => {
                         handleChange('capacityMode', mode.value);
                         handleChange('defaultCapacity', mode.value === 'single' ? 1 : 10);
                       }}
-                      className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                      className={`p-4 border-2 rounded-lg text-left transition-all cursor-pointer ${
                         formData.capacityMode === mode.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
+                          ? 'border-primary bg-primary/10 shadow-sm'
+                          : 'border-border bg-background hover:border-primary/50 hover:bg-primary/5'
                       }`}
                     >
-                      <div className="flex items-start gap-2">
-                        <div className={`mt-0.5 ${formData.capacityMode === mode.value ? 'text-primary' : ''}`}>
-                          {formData.capacityMode === mode.value && <CheckCircle className="h-5 w-5" />}
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 flex-shrink-0 ${
+                          formData.capacityMode === mode.value ? 'text-primary' : 'text-muted-foreground'
+                        }`}>
+                          <CheckCircle className={`h-5 w-5 ${
+                            formData.capacityMode === mode.value ? 'fill-primary text-primary-foreground' : ''
+                          }`} />
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium">{mode.label}</p>
                           <p className="text-sm text-muted-foreground">{mode.description}</p>
                         </div>

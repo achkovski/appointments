@@ -1031,7 +1031,7 @@ export const sendWelcomeEmail = async (email, firstName) => {
   const mailOptions = {
     from: `"${process.env.APP_NAME || 'TimeSnap.io'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to: email,
-    subject: '🎉 Welcome to TimeSnap.io - Your Account is Ready!',
+    subject: 'Welcome to TimeSnap.io - Your Account is Ready',
     html: `
       <!DOCTYPE html>
       <html lang="en">
@@ -1334,8 +1334,8 @@ export const sendWelcomeEmail = async (email, firstName) => {
           <div class="email-wrapper">
             <!-- Header -->
             <div class="header">
-              <div class="logo-circle">⏰</div>
-              <h1>Welcome to TimeSnap.io!</h1>
+              <div class="logo-circle">TS</div>
+              <h1>Welcome to TimeSnap.io</h1>
               <p>Your journey to effortless appointment management starts now</p>
             </div>
 
@@ -1343,40 +1343,34 @@ export const sendWelcomeEmail = async (email, firstName) => {
             <div class="content">
               <!-- Greeting -->
               <div class="greeting">
-                <h2>Hello ${firstName}! 👋</h2>
-                <p>We're thrilled to have you on board! Your email has been verified and your account is now <strong>active and ready to go</strong>.</p>
-                <p style="margin-top: 10px;">TimeSnap.io is your complete solution for managing appointments, bookings, and client relationships. Whether you're running a salon, dental practice, consulting business, or any service-based operation, we've built everything you need to succeed.</p>
+                <h2>Hello ${firstName},</h2>
+                <p>Thank you for joining TimeSnap.io. Your email has been verified and your account is now <strong>active and ready to use</strong>.</p>
+                <p style="margin-top: 10px;">TimeSnap.io is your complete solution for managing appointments, bookings, and client relationships. Whether you're running a salon, dental practice, consulting business, or any service-based operation, we provide everything you need to streamline your scheduling process.</p>
               </div>
 
               <!-- Features Grid -->
               <div class="features-grid">
                 <div class="feature-card">
-                  <div class="feature-icon">🏢</div>
-                  <h4>Create Your Business Profile</h4>
-                  <p>Set up your unique booking page with custom branding and make it yours</p>
+                  <h4>Business Profile</h4>
+                  <p>Set up your unique booking page with custom branding</p>
                 </div>
                 <div class="feature-card">
-                  <div class="feature-icon">💼</div>
-                  <h4>Manage Services Effortlessly</h4>
+                  <h4>Service Management</h4>
                   <p>Add and configure services with custom pricing, durations, and descriptions</p>
                 </div>
                 <div class="feature-card">
-                  <div class="feature-icon">📅</div>
-                  <h4>Set Your Availability</h4>
+                  <h4>Availability Control</h4>
                   <p>Define working hours, breaks, and time off with flexible scheduling</p>
                 </div>
                 <div class="feature-card">
-                  <div class="feature-icon">🌍</div>
-                  <h4>Accept Bookings 24/7</h4>
+                  <h4>24/7 Online Booking</h4>
                   <p>Let clients book appointments anytime, anywhere, from any device</p>
                 </div>
                 <div class="feature-card">
-                  <div class="feature-icon">📊</div>
-                  <h4>Track & Analyze</h4>
-                  <p>View appointments in one dashboard with powerful analytics insights</p>
+                  <h4>Analytics Dashboard</h4>
+                  <p>View appointments and track performance with powerful analytics insights</p>
                 </div>
                 <div class="feature-card">
-                  <div class="feature-icon">🔔</div>
                   <h4>Automated Notifications</h4>
                   <p>Send confirmations and reminders automatically to reduce no-shows</p>
                 </div>
@@ -1385,26 +1379,26 @@ export const sendWelcomeEmail = async (email, firstName) => {
               <!-- CTA Section -->
               <div class="cta-section">
                 <h3 style="color: #92400e; font-size: 22px; margin-bottom: 15px; font-weight: 700;">Ready to Get Started?</h3>
-                <p style="color: #78350f; margin-bottom: 20px; font-size: 16px;">Access your dashboard and start setting up your business profile today!</p>
-                <a href="${dashboardUrl}" class="cta-button">Launch Your Dashboard 🚀</a>
+                <p style="color: #78350f; margin-bottom: 20px; font-size: 16px;">Access your dashboard and start setting up your business profile today.</p>
+                <a href="${dashboardUrl}" class="cta-button">Access Your Dashboard</a>
               </div>
 
               <div class="divider"></div>
 
               <!-- Quick Start Guide -->
               <div class="quick-start">
-                <h3>🎯 Your 5-Step Quick Start Guide</h3>
+                <h3>Quick Start Guide</h3>
                 <div class="step" data-number="1">Complete your business setup in the dashboard</div>
                 <div class="step" data-number="2">Add your services with pricing and duration</div>
                 <div class="step" data-number="3">Set your working hours and availability</div>
                 <div class="step" data-number="4">Share your unique booking link with clients</div>
-                <div class="step" data-number="5">Start accepting appointments and grow your business!</div>
+                <div class="step" data-number="5">Start accepting appointments and managing bookings</div>
               </div>
 
               <!-- Help Section -->
               <div class="help-box">
-                <h3>💬 Need Help Getting Started?</h3>
-                <p><strong>We're here for you!</strong> Our dedicated support team is ready to assist with:</p>
+                <h3>Need Help Getting Started?</h3>
+                <p><strong>Our support team is here to help.</strong> We're ready to assist you with:</p>
                 <ul style="color: #1e3a8a; margin: 15px 0 15px 20px; font-size: 14px;">
                   <li>Setting up your business profile</li>
                   <li>Configuring services and availability</li>
@@ -1413,20 +1407,20 @@ export const sendWelcomeEmail = async (email, firstName) => {
                   <li>Any questions you might have</li>
                 </ul>
                 <div class="contact-info">
-                  <strong style="color: #1e40af;">📧 Contact us:</strong>
+                  <strong style="color: #1e40af;">Contact us:</strong>
                   <a href="mailto:${supportEmail}">${supportEmail}</a>
                 </div>
               </div>
 
               <!-- Quote Section -->
               <div class="quote-section">
-                <p>"Simplify scheduling, amplify your business" ✨</p>
+                <p>"Simplify scheduling, amplify your business"</p>
               </div>
             </div>
 
             <!-- Footer -->
             <div class="footer">
-              <div class="footer-logo">⏰ TimeSnap.io</div>
+              <div class="footer-logo">TimeSnap.io</div>
               <p style="margin: 10px 0; font-size: 14px;">Modern Appointment Management Made Simple</p>
 
               <div class="divider" style="background: linear-gradient(90deg, transparent 0%, #374151 50%, transparent 100%);"></div>
@@ -1444,69 +1438,58 @@ export const sendWelcomeEmail = async (email, firstName) => {
       </html>
     `,
     text: `
-      🎉 WELCOME TO TIMESNAP.IO!
+      WELCOME TO TIMESNAP.IO
 
-      Hello ${firstName}! 👋
+      Hello ${firstName},
 
-      We're thrilled to have you on board! Your email has been verified and your account is now active and ready to go.
+      Thank you for joining TimeSnap.io. Your email has been verified and your account is now active and ready to use.
 
       TimeSnap.io is your complete solution for managing appointments, bookings, and client relationships.
 
       ═══════════════════════════════════════
 
-      WHAT YOU CAN DO WITH TIMESNAP.IO:
+      KEY FEATURES:
 
-      🏢 Create Your Business Profile
-         Set up your unique booking page with custom branding
-
-      💼 Manage Services Effortlessly
-         Add and configure services with pricing and durations
-
-      📅 Set Your Availability
-         Define working hours, breaks, and time off
-
-      🌍 Accept Bookings 24/7
-         Let clients book appointments anytime, anywhere
-
-      📊 Track & Analyze
-         View appointments in one dashboard with analytics
-
-      🔔 Automated Notifications
-         Send confirmations and reminders automatically
+      • Business Profile - Set up your unique booking page with custom branding
+      • Service Management - Add and configure services with pricing and durations
+      • Availability Control - Define working hours, breaks, and time off
+      • 24/7 Online Booking - Let clients book appointments anytime, anywhere
+      • Analytics Dashboard - View appointments and track performance
+      • Automated Notifications - Send confirmations and reminders automatically
 
       ═══════════════════════════════════════
 
-      🚀 READY TO GET STARTED?
+      READY TO GET STARTED?
 
       Access your dashboard: ${dashboardUrl}
 
       ═══════════════════════════════════════
 
-      🎯 YOUR 5-STEP QUICK START GUIDE:
+      QUICK START GUIDE:
 
       1. Complete your business setup in the dashboard
       2. Add your services with pricing and duration
       3. Set your working hours and availability
       4. Share your unique booking link with clients
-      5. Start accepting appointments and grow your business!
+      5. Start accepting appointments and managing bookings
 
       ═══════════════════════════════════════
 
-      💬 NEED HELP GETTING STARTED?
+      NEED HELP GETTING STARTED?
 
-      We're here for you! Our support team is ready to assist with:
+      Our support team is here to help. We're ready to assist you with:
       • Setting up your business profile
       • Configuring services and availability
       • Customizing your booking page
       • Any questions you might have
 
-      📧 Contact us: ${supportEmail}
+      Contact us: ${supportEmail}
 
       ═══════════════════════════════════════
 
-      "Simplify scheduling, amplify your business" ✨
+      "Simplify scheduling, amplify your business"
 
-      ⏰ TimeSnap.io - Modern Appointment Management
+      TimeSnap.io - Modern Appointment Management
       © ${new Date().getFullYear()} TimeSnap.io. All rights reserved.
     `,
   };
