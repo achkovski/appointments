@@ -68,3 +68,9 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* React Day Picker v9 Custom Variables */
+.rdp-root {
+  --rdp-accent-color: hsl(var(--primary));
+  --rdp-accent-background-color: hsl(var(--accent));
+}

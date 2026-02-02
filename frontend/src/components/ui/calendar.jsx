@@ -1,7 +1,7 @@
 import * as React from "react"
 import { DayPicker } from "react-day-picker"
 import { cn } from "../../lib/utils"
-import "react-day-picker/dist/style.css"
+import "react-day-picker/src/style.css"
 
 function Calendar({
   className,
@@ -16,33 +16,28 @@ function Calendar({
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 inline-flex items-center justify-center rounded-md border border-input"
+        month_caption: "flex justify-center pt-1 relative items-center font-medium text-base h-12 mb-4",
+        button_previous: cn(
+          "absolute -left-12 top-1/2 -translate-y-1/2 h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100 inline-flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors"
         ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        button_next: cn(
+          "absolute -right-12 top-1/2 -translate-y-1/2 h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100 inline-flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors"
+        ),
+        nav: "flex items-center",
+        chevron: "h-4 w-4 fill-current",
+        month_grid: "w-full border-collapse mt-4",
+        weekdays: "grid grid-cols-7",
+        weekday: "text-muted-foreground rounded-md w-9 h-9 font-normal text-[0.8rem] flex items-center justify-center",
+        week: "grid grid-cols-7 mt-2",
         day: cn(
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-offset-2"
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer transition-colors"
         ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground font-bold",
-        day_outside:
-          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        day_disabled: "text-muted-foreground opacity-50 cursor-not-allowed",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
+        selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+        today: "bg-accent text-accent-foreground font-bold",
+        outside: "text-muted-foreground opacity-50",
+        disabled: "text-muted-foreground opacity-50 cursor-not-allowed",
+        range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        hidden: "invisible",
         ...classNames,
       }}
       {...props}
