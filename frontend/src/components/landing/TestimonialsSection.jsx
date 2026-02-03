@@ -24,7 +24,7 @@ const testimonials = [
 
 const TestimonialsSection = () => {
   return (
-    <section className="py-16 md:py-24 bg-white">
+    <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -37,37 +37,55 @@ const TestimonialsSection = () => {
         </div>
 
         {/* Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {testimonials.map((testimonial, index) => (
-            <Card key={index} className="border-2 hover:border-primary transition-colors">
+            <Card
+              key={index}
+              className="border-2 hover:border-primary transition-all duration-300 hover:shadow-xl hover:-translate-y-2 bg-white"
+            >
               <CardContent className="pt-6">
-                <Quote className="h-8 w-8 text-primary/20 mb-4" />
-                <p className="text-gray-700 mb-6 italic">
+                <div className="mb-4">
+                  <Quote className="h-10 w-10 text-primary/30" />
+                </div>
+                <p className="text-gray-700 mb-6 italic leading-relaxed">
                   "{testimonial.quote}"
                 </p>
-                <div>
-                  <p className="font-semibold text-foreground">{testimonial.author}</p>
-                  <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                  <p className="text-sm text-primary">{testimonial.business}</p>
+                <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                  {/* Avatar placeholder */}
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center font-bold text-primary">
+                    {testimonial.author.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{testimonial.author}</p>
+                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                    <p className="text-sm text-primary font-medium">{testimonial.business}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Stats */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-          <div>
-            <p className="text-4xl font-bold text-primary mb-2">1,000+</p>
-            <p className="text-gray-600">Businesses Using TimeSnap</p>
+        {/* Stats - Enhanced with animations */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+          <div className="p-6 rounded-xl bg-white border-2 border-primary/10 hover:border-primary/30 transition-all hover:shadow-lg">
+            <p className="text-5xl font-bold text-primary mb-3">1,000+</p>
+            <p className="text-gray-600 font-medium">Businesses Using TimeSnap</p>
           </div>
-          <div>
-            <p className="text-4xl font-bold text-primary mb-2">50,000+</p>
-            <p className="text-gray-600">Appointments Booked</p>
+          <div className="p-6 rounded-xl bg-white border-2 border-primary/10 hover:border-primary/30 transition-all hover:shadow-lg">
+            <p className="text-5xl font-bold text-primary mb-3">50,000+</p>
+            <p className="text-gray-600 font-medium">Appointments Booked</p>
           </div>
-          <div>
-            <p className="text-4xl font-bold text-primary mb-2">4.8/5</p>
-            <p className="text-gray-600">Average Rating</p>
+          <div className="p-6 rounded-xl bg-white border-2 border-primary/10 hover:border-primary/30 transition-all hover:shadow-lg">
+            <p className="text-5xl font-bold text-primary mb-3">4.8/5</p>
+            <p className="text-gray-600 font-medium">Average Rating</p>
+            <div className="flex justify-center gap-1 mt-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span key={star} className={`text-xl ${star <= 4 ? 'text-yellow-400' : 'text-gray-300'}`}>
+                  ★
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>

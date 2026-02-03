@@ -22,11 +22,14 @@ import Settings from './pages/dashboard/Settings';
 import BookingPage from './pages/BookingPage';
 import ConfirmAppointment from './pages/ConfirmAppointment';
 import NotificationListener from './components/notifications/NotificationListener';
+import CookieConsent from './components/CookieConsent';
 import { Toaster } from './components/ui/toaster';
 
 // Lazy load landing pages for performance
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Privacy = lazy(() => import('./pages/Privacy'));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -57,6 +60,22 @@ function App() {
             element={
               <Suspense fallback={<LoadingFallback />}>
                 <Contact />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/terms"
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <Terms />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/privacy"
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <Privacy />
               </Suspense>
             }
           />
@@ -111,6 +130,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster />
+        <CookieConsent />
       </Router>
     </AuthProvider>
   );

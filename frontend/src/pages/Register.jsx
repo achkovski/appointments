@@ -139,22 +139,25 @@ const Register = () => {
                 <Calendar className="h-8 w-8 text-primary" />
                 <h2 className="text-3xl font-bold">TimeSnap.io</h2>
               </div>
-              <h3 className="text-2xl font-bold text-foreground mb-4">
+              <Badge className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 text-base mb-4 animate-pulse">
+                <Sparkles className="h-4 w-4 mr-2" />
+                🎉 BETA Launch - 100% FREE!
+              </Badge>
+              <h3 className="text-2xl font-bold text-foreground mb-2">
                 Join 1,000+ businesses managing appointments smarter
               </h3>
-              <Badge className="bg-green-500 hover:bg-green-600">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Free During Beta
-              </Badge>
+              <p className="text-muted-foreground">
+                All premium features included • No credit card required
+              </p>
             </div>
 
             {/* Benefits Checklist */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Check className="h-4 w-4 text-white" />
+              <div className="p-3 bg-green-50 border-2 border-green-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-800 font-bold">100% FREE during BETA launch</span>
                 </div>
-                <span className="text-gray-700 font-medium">Free during beta launch</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
@@ -166,7 +169,7 @@ const Register = () => {
                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
                   <Check className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-gray-700 font-medium">Unlimited appointments</span>
+                <span className="text-gray-700 font-medium">Unlimited appointments & services</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
@@ -184,7 +187,13 @@ const Register = () => {
                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
                   <Check className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-gray-700 font-medium">Real-time analytics</span>
+                <span className="text-gray-700 font-medium">Real-time analytics & reports</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Check className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">Employee management</span>
               </div>
             </div>
 
@@ -211,13 +220,16 @@ const Register = () => {
                 <Calendar className="h-10 w-10 text-primary" />
                 <h1 className="text-4xl font-bold">TimeSnap.io</h1>
               </div>
-              <p className="text-muted-foreground mb-2">
+              <Badge className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 text-base mb-3 animate-pulse">
+                <Sparkles className="h-4 w-4 mr-2" />
+                🎉 BETA Launch - 100% FREE!
+              </Badge>
+              <p className="text-muted-foreground">
                 Create your account and start managing appointments
               </p>
-              <Badge className="bg-green-500 hover:bg-green-600">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Free During Beta
-              </Badge>
+              <p className="text-sm text-primary font-medium mt-2">
+                All premium features included • No credit card required
+              </p>
             </div>
 
             {/* Register Card */}

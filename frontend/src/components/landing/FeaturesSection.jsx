@@ -36,7 +36,7 @@ const features = [
 
 const FeaturesSection = () => {
   return (
-    <section id="features" className="py-16 md:py-24 bg-white">
+    <section id="features" className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -55,13 +55,15 @@ const FeaturesSection = () => {
             return (
               <Card
                 key={index}
-                className="text-center hover:shadow-lg transition-shadow border-border"
+                className="text-center hover:shadow-xl hover:-translate-y-2 transition-all duration-300 border-2 border-transparent hover:border-primary/20 group"
               >
                 <CardHeader>
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Icon className="h-6 w-6 text-primary" />
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                    <Icon className="h-8 w-8 text-primary" />
                   </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                    {feature.title}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-gray-600">

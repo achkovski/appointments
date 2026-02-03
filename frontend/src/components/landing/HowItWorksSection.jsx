@@ -24,7 +24,7 @@ const steps = [
 
 const HowItWorksSection = () => {
   return (
-    <section id="how-it-works" className="py-16 md:py-24 bg-white">
+    <section id="how-it-works" className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -39,36 +39,48 @@ const HowItWorksSection = () => {
         {/* Steps */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
           {/* Connection Line (desktop only) */}
-          <div className="hidden md:block absolute top-20 left-0 right-0 h-0.5 bg-gray-200 -z-10" style={{ left: '16.67%', right: '16.67%' }} />
+          <div className="hidden md:block absolute top-20 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary to-primary/20 -z-10" style={{ left: '16.67%', right: '16.67%' }} />
 
           {steps.map((step, index) => {
             const Icon = step.icon;
             return (
               <Card
                 key={index}
-                className="relative border-2 hover:border-primary transition-colors"
+                className="relative border-2 hover:border-primary transition-all duration-300 hover:shadow-xl hover:-translate-y-2 bg-white group"
               >
                 <CardHeader>
                   {/* Step Number */}
-                  <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300 relative z-10">
                     <span className="text-2xl font-bold text-white">{step.number}</span>
                   </div>
 
                   {/* Icon */}
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Icon className="h-6 w-6 text-primary" />
+                  <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
+                    <Icon className="h-7 w-7 text-primary" />
                   </div>
 
-                  <CardTitle className="text-xl text-center">{step.title}</CardTitle>
+                  <CardTitle className="text-xl text-center group-hover:text-primary transition-colors">
+                    {step.title}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="text-gray-600 text-center">
+                  <CardDescription className="text-gray-600 text-center leading-relaxed">
                     {step.description}
                   </CardDescription>
                 </CardContent>
               </Card>
             );
           })}
+        </div>
+
+        {/* Bottom CTA */}
+        <div className="mt-16 text-center">
+          <p className="text-lg text-gray-700 mb-2">
+            <strong>Ready to get started?</strong> It's completely free during our beta period!
+          </p>
+          <p className="text-sm text-muted-foreground">
+            No technical skills required • No credit card needed • Cancel anytime
+          </p>
         </div>
       </div>
     </section>

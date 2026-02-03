@@ -25,7 +25,7 @@ const benefits = [
 
 const BenefitsSection = () => {
   return (
-    <section className="py-16 md:py-24 bg-gray-50">
+    <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -42,32 +42,40 @@ const BenefitsSection = () => {
           {benefits.map((benefit, index) => (
             <div
               key={index}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center"
+              className="flex flex-col md:flex-row gap-6 items-center justify-between"
             >
               {/* Problem */}
-              <div className="bg-white p-6 rounded-lg border-2 border-red-100 shadow-sm">
+              <div className="flex-1 bg-white p-6 rounded-xl border-2 border-red-100 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-7 h-7 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
                     <X className="h-4 w-4 text-white" />
                   </div>
                   <p className="text-gray-700 font-medium">{benefit.problem}</p>
                 </div>
               </div>
 
+              {/* Arrow connector */}
+              <div className="text-primary text-3xl font-bold md:block hidden">→</div>
+              <div className="text-primary text-3xl font-bold md:hidden rotate-90">↓</div>
+
               {/* Solution */}
-              <div className="bg-primary p-6 rounded-lg shadow-lg">
+              <div className="flex-1 bg-gradient-to-br from-primary to-primary/80 p-6 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 transform hover:scale-105">
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
                     <Check className="h-4 w-4 text-primary" />
                   </div>
                   <p className="text-white font-semibold">{benefit.solution}</p>
                 </div>
               </div>
 
+              {/* Arrow connector */}
+              <div className="text-green-500 text-3xl font-bold md:block hidden">→</div>
+              <div className="text-green-500 text-3xl font-bold md:hidden rotate-90">↓</div>
+
               {/* Outcome */}
-              <div className="bg-white p-6 rounded-lg border-2 border-green-100 shadow-sm">
+              <div className="flex-1 bg-white p-6 rounded-xl border-2 border-green-100 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
                     <Check className="h-4 w-4 text-white" />
                   </div>
                   <p className="text-gray-700 font-medium">{benefit.outcome}</p>
