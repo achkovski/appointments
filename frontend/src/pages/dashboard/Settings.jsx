@@ -309,11 +309,22 @@ const Settings = () => {
       const result = await triggerAutoComplete();
 
       setAutoCompleteResult(result);
+
+      // Build success message based on what was processed
+      const messages = [];
       if (result.completed > 0) {
-        setSuccess(`Successfully completed ${result.completed} appointment(s)`);
-      } else {
-        setSuccess('No appointments to auto-complete');
+        messages.push(`${result.completed} confirmed appointment(s) auto-completed`);
       }
+      if (result.cancelled > 0) {
+        messages.push(`${result.cancelled} pending appointment(s) auto-cancelled`);
+      }
+
+      if (messages.length > 0) {
+        setSuccess(`Successfully processed: ${messages.join(' and ')}`);
+      } else {
+        setSuccess('No appointments to process');
+      }
+
       setTimeout(() => {
         setSuccess(null);
         setAutoCompleteResult(null);
@@ -516,13 +527,13 @@ const Settings = () => {
             </div>
 
             <div className="border-t pt-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4">Appointment Completion</h3>
+              <h3 className="text-lg font-semibold mb-4">Appointment Automation</h3>
 
               <div className="flex items-center justify-between mb-4">
                 <div className="flex-1">
-                  <p className="font-medium">Auto-complete past appointments</p>
+                  <p className="font-medium">Auto-complete & Auto-cancel Past Appointments</p>
                   <p className="text-sm text-muted-foreground">
-                    Automatically mark confirmed appointments as completed after they pass. This helps keep your analytics accurate without manual updates.
+                    Automatically mark confirmed appointments as completed and cancel pending appointments after they pass. This keeps your appointment list clean and analytics accurate.
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -553,7 +564,7 @@ const Settings = () => {
                       ))}
                     </select>
                     <p className="text-xs text-muted-foreground">
-                      How long after an appointment ends before it's automatically marked as completed. This gives you time to manually mark no-shows or cancellations.
+                      How long after an appointment ends before it's automatically processed. Confirmed appointments are marked completed, pending appointments are cancelled. This gives you time to manually handle no-shows or late confirmations.
                     </p>
                   </div>
 
@@ -567,8 +578,8 @@ const Settings = () => {
                     </Button>
                     <p className="text-sm text-muted-foreground">
                       {hasChanges
-                        ? 'Save settings first to run auto-complete'
-                        : 'Manually complete all eligible past appointments now'}
+                        ? 'Save settings first to run automation'
+                        : 'Manually process all eligible past appointments now (completes confirmed, cancels pending)'}
                     </p>
                   </div>
                 </>

@@ -197,8 +197,8 @@ const Appointments = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentAppointments = filteredAppointments.slice(startIndex, endIndex);
 
-  const getStatusBadge = (status, completedAutomatically = false) => {
-    return <StatusBadge status={status} size="sm" completedAutomatically={completedAutomatically} />;
+  const getStatusBadge = (status, completedAutomatically = false, cancellationReason = null) => {
+    return <StatusBadge status={status} size="sm" completedAutomatically={completedAutomatically} cancellationReason={cancellationReason} />;
   };
 
   const formatDate = (dateString) => {
@@ -521,7 +521,7 @@ const Appointments = () => {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{getStatusBadge(appointment.status, appointment.completedAutomatically)}</TableCell>
+                      <TableCell>{getStatusBadge(appointment.status, appointment.completedAutomatically, appointment.cancellationReason)}</TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1 text-sm">
                           <div className="flex items-center gap-2">

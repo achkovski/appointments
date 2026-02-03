@@ -92,8 +92,8 @@ const AppointmentDetail = () => {
     }
   };
 
-  const getStatusBadge = (status, completedAutomatically = false) => {
-    return <StatusBadge status={status} completedAutomatically={completedAutomatically} />;
+  const getStatusBadge = (status, completedAutomatically = false, cancellationReason = null) => {
+    return <StatusBadge status={status} completedAutomatically={completedAutomatically} cancellationReason={cancellationReason} />;
   };
 
   const formatDate = (dateString) => {
@@ -333,7 +333,7 @@ const AppointmentDetail = () => {
             </p>
           </div>
         </div>
-        {getStatusBadge(appointment.status, appointment.completedAutomatically)}
+        {getStatusBadge(appointment.status, appointment.completedAutomatically, appointment.cancellationReason)}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

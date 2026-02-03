@@ -7,11 +7,12 @@ import { eq, and, lt, or, sql } from 'drizzle-orm';
  * AUTO-COMPLETE SCHEDULER SERVICE
  *
  * Automatically marks past confirmed appointments as completed
+ * and auto-cancels pending appointments that are past their date/time
  * based on business-specific settings.
  *
  * Settings used:
  * - autoCompleteAppointments: boolean (default: false) - Enable/disable auto-completion
- * - autoCompleteGraceHours: number (default: 24) - Hours after appointment end time before auto-completing
+ * - autoCompleteGraceHours: number (default: 24) - Hours after appointment end time before auto-completing/cancelling
  */
 
 /**
@@ -71,6 +72,7 @@ export async function autoCompletePastAppointments() {
       .from(businesses);
 
     let totalCompleted = 0;
+    let totalCancelled = 0;
     let businessesProcessed = 0;
 
     for (const business of businessesWithAutoComplete) {
@@ -133,12 +135,57 @@ export async function autoCompletePastAppointments() {
       }
 
       console.log(`    Completed ${eligibleAppointments.length} appointments for this business`);
+
+      // Find pending appointments that are past the grace period
+      // An appointment is eligible for cancellation if:
+      // 1. Status is PENDING
+      // 2. Either:
+      //    a. appointmentDate < cutoffDate, OR
+      //    b. appointmentDate = cutoffDate AND endTime < cutoffTime
+      const eligiblePendingAppointments = await db
+        .select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.businessId, business.id),
+          eq(appointments.status, 'PENDING'),
+          or(
+            lt(appointments.appointmentDate, cutoffDate),
+            and(
+              eq(appointments.appointmentDate, cutoffDate),
+              lt(appointments.endTime, cutoffTime)
+            )
+          )
+        ));
+
+      if (eligiblePendingAppointments.length > 0) {
+        // Update each eligible pending appointment
+        for (const appointment of eligiblePendingAppointments) {
+          try {
+            await db
+              .update(appointments)
+              .set({
+                status: 'CANCELLED',
+                cancellationReason: 'Automatically cancelled - appointment time expired while pending',
+                updatedAt: new Date().toISOString()
+              })
+              .where(eq(appointments.id, appointment.id));
+
+            totalCancelled++;
+            console.log(`    Auto-cancelled pending appointment ${appointment.id} (${appointment.appointmentDate} ${appointment.startTime})`);
+          } catch (error) {
+            console.error(`    Failed to cancel pending appointment ${appointment.id}:`, error.message);
+          }
+        }
+
+        console.log(`    Auto-cancelled ${eligiblePendingAppointments.length} pending appointments for this business`);
+      }
     }
 
-    console.log(`[AUTO-COMPLETE] Complete: ${totalCompleted} appointments auto-completed across ${businessesProcessed} businesses`);
+    console.log(`[AUTO-COMPLETE] Complete: ${totalCompleted} appointments auto-completed and ${totalCancelled} pending appointments auto-cancelled across ${businessesProcessed} businesses`);
 
     return {
       totalCompleted,
+      totalCancelled,
       businessesProcessed
     };
   } catch (error) {

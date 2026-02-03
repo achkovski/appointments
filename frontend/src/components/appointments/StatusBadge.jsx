@@ -5,7 +5,7 @@ import { CheckCircle, XCircle, AlertCircle, Clock, Ban, Zap } from 'lucide-react
  * Consistent status badge component for appointments
  * Used across Appointments list, AppointmentDetail, and BookingPage
  */
-const StatusBadge = ({ status, showIcon = true, size = 'default', completedAutomatically = false }) => {
+const StatusBadge = ({ status, showIcon = true, size = 'default', completedAutomatically = false, cancellationReason = null }) => {
   const statusUpper = status?.toUpperCase();
 
   const statusConfig = {
@@ -27,6 +27,12 @@ const StatusBadge = ({ status, showIcon = true, size = 'default', completedAutom
       icon: XCircle,
       className: 'bg-red-500 hover:bg-red-600 text-white',
     },
+    CANCELLED_AUTO: {
+      variant: 'outline',
+      label: 'Auto-Cancelled',
+      icon: Zap,
+      className: 'bg-orange-50 text-orange-700 border-orange-300',
+    },
     COMPLETED: {
       variant: 'outline',
       label: 'Completed',
@@ -47,8 +53,20 @@ const StatusBadge = ({ status, showIcon = true, size = 'default', completedAutom
     },
   };
 
+  // Detect auto-cancelled appointments
+  const isAutoCancelled = statusUpper === 'CANCELLED' &&
+    cancellationReason &&
+    cancellationReason.includes('Automatically cancelled');
+
   // Use auto-completed config if status is COMPLETED and was auto-completed
-  const configKey = statusUpper === 'COMPLETED' && completedAutomatically ? 'COMPLETED_AUTO' : statusUpper;
+  // Use auto-cancelled config if status is CANCELLED and was auto-cancelled
+  let configKey = statusUpper;
+  if (statusUpper === 'COMPLETED' && completedAutomatically) {
+    configKey = 'COMPLETED_AUTO';
+  } else if (isAutoCancelled) {
+    configKey = 'CANCELLED_AUTO';
+  }
+
   const config = statusConfig[configKey] || statusConfig.PENDING;
   const Icon = config.icon;
 

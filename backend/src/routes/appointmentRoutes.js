@@ -78,7 +78,7 @@ router.post('/appointments/:appointmentId/contact', protect, contactClient);
 
 /**
  * @route   POST /api/appointments/auto-complete
- * @desc    Manually trigger auto-complete for past appointments
+ * @desc    Manually trigger auto-complete for past confirmed appointments and auto-cancel past pending appointments
  * @access  Private (Business Owner)
  */
 router.post('/appointments/auto-complete', protect, triggerAutoComplete);

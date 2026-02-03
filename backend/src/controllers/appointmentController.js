@@ -1519,6 +1519,8 @@ export const contactClient = async (req, res) => {
  * Manually trigger auto-complete for past appointments
  * POST /api/appointments/auto-complete
  * Runs the auto-complete process for the authenticated user's business
+ * - Auto-completes past CONFIRMED appointments
+ * - Auto-cancels past PENDING appointments
  */
 export const triggerAutoComplete = async (req, res) => {
   try {
@@ -1563,8 +1565,8 @@ export const triggerAutoComplete = async (req, res) => {
     const seconds = String(cutoff.getSeconds()).padStart(2, '0');
     const cutoffTime = `${hours}:${minutes}:${seconds}`;
 
-    // Find eligible appointments
-    const eligibleAppointments = await db
+    // Find eligible CONFIRMED appointments to auto-complete
+    const eligibleConfirmedAppointments = await db
       .select()
       .from(appointments)
       .where(and(
@@ -1576,7 +1578,7 @@ export const triggerAutoComplete = async (req, res) => {
       ));
 
     // Filter more precisely: appointments where date < cutoffDate OR (date = cutoffDate AND endTime < cutoffTime)
-    const toComplete = eligibleAppointments.filter(apt => {
+    const toComplete = eligibleConfirmedAppointments.filter(apt => {
       if (apt.appointmentDate < cutoffDate) {
         return true;
       }
@@ -1586,15 +1588,39 @@ export const triggerAutoComplete = async (req, res) => {
       return false;
     });
 
-    if (toComplete.length === 0) {
+    // Find eligible PENDING appointments to auto-cancel
+    const eligiblePendingAppointments = await db
+      .select()
+      .from(appointments)
+      .where(and(
+        eq(appointments.businessId, businessData.id),
+        eq(appointments.status, 'PENDING'),
+        or(
+          lte(appointments.appointmentDate, cutoffDate)
+        )
+      ));
+
+    // Filter more precisely for pending appointments
+    const toCancel = eligiblePendingAppointments.filter(apt => {
+      if (apt.appointmentDate < cutoffDate) {
+        return true;
+      }
+      if (apt.appointmentDate === cutoffDate && apt.endTime < cutoffTime) {
+        return true;
+      }
+      return false;
+    });
+
+    if (toComplete.length === 0 && toCancel.length === 0) {
       return res.json({
         success: true,
-        message: 'No appointments to auto-complete',
-        completed: 0
+        message: 'No appointments to process',
+        completed: 0,
+        cancelled: 0
       });
     }
 
-    // Update each eligible appointment
+    // Update each eligible confirmed appointment to COMPLETED
     let completedCount = 0;
     for (const apt of toComplete) {
       await db
@@ -1608,10 +1634,34 @@ export const triggerAutoComplete = async (req, res) => {
       completedCount++;
     }
 
+    // Update each eligible pending appointment to CANCELLED
+    let cancelledCount = 0;
+    for (const apt of toCancel) {
+      await db
+        .update(appointments)
+        .set({
+          status: 'CANCELLED',
+          cancellationReason: 'Automatically cancelled - appointment time expired while pending',
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(appointments.id, apt.id));
+      cancelledCount++;
+    }
+
+    // Build response message
+    const messages = [];
+    if (completedCount > 0) {
+      messages.push(`${completedCount} confirmed appointment(s) auto-completed`);
+    }
+    if (cancelledCount > 0) {
+      messages.push(`${cancelledCount} pending appointment(s) auto-cancelled`);
+    }
+
     res.json({
       success: true,
-      message: `Successfully auto-completed ${completedCount} appointment(s)`,
-      completed: completedCount
+      message: messages.join(' and '),
+      completed: completedCount,
+      cancelled: cancelledCount
     });
 
   } catch (error) {
