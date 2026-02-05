@@ -8,6 +8,7 @@ import { Building2, AlertCircle, CheckCircle } from 'lucide-react';
 import { createBusiness } from '../services/businessService';
 import { useBusiness } from '../context/BusinessContext';
 import { useAuth } from '../context/AuthContext';
+import { NORTH_MACEDONIA_CITIES, COUNTRIES } from '../utils/locationConstants';
 
 const BUSINESS_TYPES = [
   { value: 'healthcare', label: 'Healthcare' },
@@ -38,6 +39,8 @@ const BusinessSetup = () => {
     phone: '',
     email: '',
     address: '',
+    city: '',
+    country: 'north_macedonia',
     capacityMode: 'single',
     defaultCapacity: 1,
   });
@@ -217,10 +220,45 @@ const BusinessSetup = () => {
                 <Input
                   id="address"
                   type="text"
-                  placeholder="123 Main St, City, State"
+                  placeholder="ул. Македонија бр. 12/2"
                   value={formData.address}
                   onChange={(e) => handleChange('address', e.target.value)}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City (Optional)</Label>
+                  <select
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => handleChange('city', e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select a city</option>
+                    {NORTH_MACEDONIA_CITIES.map((city) => (
+                      <option key={city.value} value={city.value}>
+                        {city.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <select
+                    id="country"
+                    value={formData.country}
+                    onChange={(e) => handleChange('country', e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {COUNTRIES.map((country) => (
+                      <option key={country.value} value={country.value}>
+                        {country.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-2">

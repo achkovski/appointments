@@ -20,6 +20,7 @@ import {
 import { useBusiness } from '../../context/BusinessContext';
 import { toastSuccess, toastError } from '../../utils/toastHelpers';
 import { updateBusiness, generateQRCode } from '../../services/businessService';
+import { NORTH_MACEDONIA_CITIES, COUNTRIES } from '../../utils/locationConstants';
 
 const CAPACITY_MODES = [
   { value: 'SINGLE', label: 'Single', description: 'One client per time slot' },
@@ -41,6 +42,8 @@ const BusinessProfile = () => {
     phone: '',
     email: '',
     address: '',
+    city: '',
+    country: 'north_macedonia',
     website: '',
     capacityMode: 'SINGLE',
     defaultCapacity: 1,
@@ -58,6 +61,8 @@ const BusinessProfile = () => {
         phone: business.phone || '',
         email: business.email || '',
         address: business.address || '',
+        city: business.city || '',
+        country: business.country || 'north_macedonia',
         website: business.website || '',
         capacityMode: business.capacityMode || 'SINGLE',
         defaultCapacity: business.defaultCapacity || 1,
@@ -112,6 +117,8 @@ const BusinessProfile = () => {
         phone: formData.phone || null,
         email: formData.email || null,
         address: formData.address || null,
+        city: formData.city || null,
+        country: formData.country || null,
         website: formData.website || null,
         capacityMode: formData.capacityMode,
         defaultCapacity: parseInt(formData.defaultCapacity),
@@ -342,10 +349,45 @@ const BusinessProfile = () => {
                   id="address"
                   value={formData.address}
                   onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="123 Main St, City, State, ZIP"
+                  placeholder="ул. Македонија бр. 12/2"
                   rows={2}
                   className="pl-10"
                 />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <select
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select a city</option>
+                  {NORTH_MACEDONIA_CITIES.map((city) => (
+                    <option key={city.value} value={city.value}>
+                      {city.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <select
+                  id="country"
+                  value={formData.country}
+                  onChange={(e) => handleInputChange('country', e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {COUNTRIES.map((country) => (
+                    <option key={country.value} value={country.value}>
+                      {country.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

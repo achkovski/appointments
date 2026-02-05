@@ -11,6 +11,7 @@ import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import StatusBadge from '../components/appointments/StatusBadge';
 import { toastSuccess, toastError } from '../utils/toastHelpers';
+import { getCityDisplayName } from '../utils/locationConstants';
 import {
   getBusinessBySlug,
   getAvailableSlots,
@@ -310,7 +311,10 @@ const BookingPage = () => {
             {business?.address && (
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                <span>{business.address}</span>
+                <span>
+                  {business.address}
+                  {business.city && `, ${getCityDisplayName(business.city)}`}
+                </span>
               </div>
             )}
             {business?.phone && (

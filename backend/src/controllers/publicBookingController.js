@@ -44,6 +44,8 @@ export const getBusinessBySlug = async (req, res) => {
       slug: business[0].slug,
       description: business[0].description,
       address: business[0].address,
+      city: business[0].city,
+      country: business[0].country,
       phone: business[0].phone,
       email: business[0].email,
       website: business[0].website,

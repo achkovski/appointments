@@ -46,6 +46,8 @@ export const businesses = pgTable("businesses", {
 	slug: text().notNull(),
 	description: text(),
 	address: text(),
+	city: text(),
+	country: text().default('north_macedonia'),
 	phone: text(),
 	email: text(),
 	website: text(),

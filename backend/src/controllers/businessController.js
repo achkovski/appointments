@@ -83,6 +83,8 @@ export const createBusiness = async (req, res) => {
       businessName,
       description,
       address,
+      city,
+      country,
       phone,
       email,
       website,
@@ -134,6 +136,8 @@ export const createBusiness = async (req, res) => {
       slug,
       description: description || null,
       address: address || null,
+      city: city || null,
+      country: country || 'north_macedonia',
       phone: phone || null,
       email: email || null,
       website: website || null,
@@ -289,6 +293,8 @@ export const updateBusiness = async (req, res) => {
       businessName,
       description,
       address,
+      city,
+      country,
       phone,
       email,
       website,
@@ -332,6 +338,8 @@ export const updateBusiness = async (req, res) => {
 
     if (description !== undefined) updateData.description = description || null;
     if (address !== undefined) updateData.address = address || null;
+    if (city !== undefined) updateData.city = city || null;
+    if (country !== undefined) updateData.country = country || null;
     if (phone !== undefined) updateData.phone = phone || null;
     if (email !== undefined) updateData.email = email || null;
     if (website !== undefined) updateData.website = website || null;

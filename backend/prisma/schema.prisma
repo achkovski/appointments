@@ -46,6 +46,8 @@ model Business {
   slug                     String       @unique
   description              String?      @db.Text
   address                  String?      @db.Text
+  city                     String?
+  country                  String?      @default("north_macedonia")
   phone                    String?
   email                    String?
   website                  String?
