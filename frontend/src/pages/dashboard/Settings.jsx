@@ -59,6 +59,7 @@ const Settings = () => {
   const [bookingSettings, setBookingSettings] = useState({
     autoConfirm: true,
     requireEmailConfirmation: false,
+    emailConfirmationTimeout: 15,
     allowEmployeeBooking: false,
     bufferTime: 0,
     minBookingNotice: 2,
@@ -114,6 +115,7 @@ const Settings = () => {
       setBookingSettings({
         autoConfirm: settings.autoConfirm ?? true,
         requireEmailConfirmation: settings.requireEmailConfirmation ?? false,
+        emailConfirmationTimeout: settings.emailConfirmationTimeout ?? 15,
         allowEmployeeBooking: settings.allowEmployeeBooking ?? false,
         bufferTime: settings.bufferTime ?? 0,
         minBookingNotice: settings.minBookingNotice ?? 2,
@@ -403,6 +405,23 @@ const Settings = () => {
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
               </label>
             </div>
+
+            {bookingSettings.requireEmailConfirmation && (
+              <div className="space-y-2 ml-4 pl-4 border-l-2 border-primary/20">
+                <Label htmlFor="emailConfirmationTimeout">Email Confirmation Timeout (minutes)</Label>
+                <Input
+                  id="emailConfirmationTimeout"
+                  type="number"
+                  min="5"
+                  max="1440"
+                  value={bookingSettings.emailConfirmationTimeout}
+                  onChange={(e) => handleBookingSettingChange('emailConfirmationTimeout', parseInt(e.target.value) || 15)}
+                />
+                <p className="text-sm text-muted-foreground">
+                  If a client does not confirm their email within this time, the appointment will be automatically cancelled and the slot will be freed up. Default: 15 minutes.
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <div className="flex-1">

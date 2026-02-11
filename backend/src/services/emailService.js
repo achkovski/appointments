@@ -255,6 +255,7 @@ export const sendAppointmentConfirmationEmail = async (params) => {
     endTime,
     requiresConfirmation,
     confirmationToken,
+    confirmationTimeoutMinutes,
     businessAddress,
     businessPhone,
     businessEmail
@@ -314,7 +315,12 @@ export const sendAppointmentConfirmationEmail = async (params) => {
                 ? `<a href="${confirmationUrl}" class="button">Confirm Appointment</a>
                    <p>Or copy and paste this link into your browser:</p>
                    <p style="word-break: break-all; color: #4F46E5;">${confirmationUrl}</p>
-                   <p><strong>Important:</strong> Your appointment will only be confirmed after you click the confirmation link.</p>`
+                   ${confirmationTimeoutMinutes
+                     ? `<div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
+                          <p style="margin: 0; color: #92400E;"><strong>⏰ Important:</strong> You must confirm within <strong>${confirmationTimeoutMinutes} minutes</strong> or your appointment will be automatically cancelled and the slot will be released.</p>
+                        </div>`
+                     : '<p><strong>Important:</strong> Your appointment will only be confirmed after you click the confirmation link.</p>'
+                   }`
                 : '<p>We look forward to seeing you!</p>'
               }
             </div>
@@ -346,7 +352,7 @@ export const sendAppointmentConfirmationEmail = async (params) => {
       ${businessEmail ? `Email: ${businessEmail}` : ''}
 
       ${requiresConfirmation
-        ? `\nConfirmation Link: ${confirmationUrl}\n\nImportant: Your appointment will only be confirmed after you click the confirmation link.`
+        ? `\nConfirmation Link: ${confirmationUrl}\n\n${confirmationTimeoutMinutes ? `IMPORTANT: You must confirm within ${confirmationTimeoutMinutes} minutes or your appointment will be automatically cancelled.` : 'Important: Your appointment will only be confirmed after you click the confirmation link.'}`
         : '\nWe look forward to seeing you!'
       }
     `,

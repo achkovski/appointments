@@ -240,7 +240,7 @@ const BookingPage = () => {
       const response = await createBooking(bookingData);
 
       if (response.success) {
-        setBookingResult(response.data);
+        setBookingResult(response.appointment || response.data || response);
         setCurrentStep(STEPS.SUCCESS);
         toastSuccess('Success!', 'Your appointment has been booked');
       }
@@ -807,6 +807,11 @@ const BookingPage = () => {
                       Please check your email and click the confirmation link to verify your booking.
                       {bookingResult?.status === 'PENDING' && ' After email verification, the business will review your appointment.'}
                     </p>
+                    {bookingResult?.confirmationTimeoutMinutes > 0 && (
+                      <p className="text-amber-700 text-sm font-medium mt-2">
+                        ⏰ You must confirm within {bookingResult.confirmationTimeoutMinutes} minutes or your appointment will be automatically cancelled.
+                      </p>
+                    )}
                   </div>
                 )}
 

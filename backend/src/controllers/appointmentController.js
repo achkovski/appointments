@@ -2,7 +2,7 @@ import db from '../config/database.js';
 import { appointments, businesses, services, users, employees, employeeServices } from '../config/schema.js';
 import { eq, and, gte, lte, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { calculateAvailableSlots } from '../services/slotCalculator.js';
+import { calculateAvailableSlots, getExistingAppointments, getEmployeesForService } from '../services/slotCalculator.js';
 import {
   sendAppointmentConfirmationEmail,
   sendCancellationEmail,
@@ -194,9 +194,48 @@ export const createGuestAppointment = async (req, res) => {
       }
     }
 
+    // Auto-assign employee when "Any available employee" is selected
+    // Find the employee with the most free slots for this time
+    let assignedEmployeeId = employeeId || null;
+    if (!employeeId && settings.allowEmployeeBooking) {
+      const serviceEmployees = await getEmployeesForService(serviceId, true);
+      if (serviceEmployees.length > 0) {
+        // Get existing appointments for each employee and pick the one with fewest overlaps
+        let bestEmployee = null;
+        let fewestAppointments = Infinity;
+
+        for (const emp of serviceEmployees) {
+          const empAppointments = await getExistingAppointments(
+            businessData.id, serviceId, appointmentDate, null, emp.id
+          );
+          // Count appointments that overlap with the requested time
+          const [hours, mins] = startTime.split(':').map(Number);
+          const requestedStart = hours * 60 + mins;
+          const requestedEnd = requestedStart + serviceData.duration;
+          let overlapCount = 0;
+          for (const apt of empAppointments) {
+            const aptStart = parseInt(apt.start.split(':')[0]) * 60 + parseInt(apt.start.split(':')[1]);
+            const aptEnd = parseInt(apt.end.split(':')[0]) * 60 + parseInt(apt.end.split(':')[1]);
+            if (requestedStart < aptEnd && requestedEnd > aptStart) {
+              overlapCount++;
+            }
+          }
+          if (overlapCount < fewestAppointments) {
+            fewestAppointments = overlapCount;
+            bestEmployee = emp;
+          }
+        }
+
+        if (bestEmployee) {
+          assignedEmployeeId = bestEmployee.id;
+          employeeData = bestEmployee;
+        }
+      }
+    }
+
     // Calculate available slots for the requested date
     // Allow past slots for business users (they can add appointments made by phone)
-    const options = employeeId ? { employeeId } : {};
+    const options = assignedEmployeeId ? { employeeId: assignedEmployeeId } : {};
     const slotsData = await calculateAvailableSlots(businessData.id, serviceId, appointmentDate, null, true, options);
 
     if (!slotsData.available) {
@@ -255,7 +294,7 @@ export const createGuestAppointment = async (req, res) => {
       id: randomUUID(),
       businessId: businessData.id,
       serviceId: serviceData.id,
-      employeeId: employeeId || null,
+      employeeId: assignedEmployeeId,
       clientUserId: null, // Guest booking
       clientFirstName,
       clientLastName,
@@ -296,6 +335,7 @@ export const createGuestAppointment = async (req, res) => {
           endTime,
           requiresConfirmation: requireEmailConfirmation,
           confirmationToken: emailConfirmationToken,
+          confirmationTimeoutMinutes: requireEmailConfirmation ? (settings.emailConfirmationTimeout ?? 15) : 0,
           businessAddress: businessData.address,
           businessPhone: businessData.phone,
           businessEmail: businessData.email
@@ -330,10 +370,13 @@ export const createGuestAppointment = async (req, res) => {
       // Don't fail the booking if email fails
     }
 
+    // Get confirmation timeout for response
+    const emailConfirmationTimeout = requireEmailConfirmation ? (settings.emailConfirmationTimeout ?? 15) : 0;
+
     // Prepare response message based on status
     let responseMessage;
     if (requireEmailConfirmation) {
-      responseMessage = 'Appointment created! Please check your email to confirm.';
+      responseMessage = `Appointment created! Please check your email and confirm within ${emailConfirmationTimeout} minutes.`;
     } else if (autoConfirm) {
       responseMessage = 'Appointment confirmed!';
     } else {
@@ -352,7 +395,9 @@ export const createGuestAppointment = async (req, res) => {
         startTime,
         endTime,
         status: newAppointment.status,
-        requiresEmailConfirmation: requireEmailConfirmation
+        requiresEmailConfirmation: requireEmailConfirmation,
+        confirmationTimeoutMinutes: emailConfirmationTimeout,
+        employeeName: employeeData?.name || null
       }
     };
 
@@ -424,7 +469,15 @@ export const confirmAppointmentEmail = async (req, res) => {
       });
     }
 
-    // Get business settings to check autoConfirm
+    // Check if already cancelled (e.g., by timeout)
+    if (apt.status === 'CANCELLED') {
+      return res.status(400).json({
+        success: false,
+        message: 'This appointment has been cancelled because the confirmation time has expired. Please book a new appointment.'
+      });
+    }
+
+    // Get business settings to check autoConfirm and timeout
     const business = await db.select().from(businesses)
       .where(eq(businesses.id, apt.businessId))
       .limit(1);
@@ -438,6 +491,30 @@ export const confirmAppointmentEmail = async (req, res) => {
 
     const businessData = business[0];
     const settings = businessData.settings || {};
+
+    // Check if confirmation has expired
+    const emailConfirmationTimeout = settings.emailConfirmationTimeout ?? 15; // default 15 minutes
+    if (emailConfirmationTimeout > 0) {
+      const createdAt = new Date(apt.createdAt);
+      const expiresAt = new Date(createdAt.getTime() + emailConfirmationTimeout * 60 * 1000);
+      const now = new Date();
+      if (now > expiresAt) {
+        // Auto-cancel the expired appointment
+        await db.update(appointments)
+          .set({
+            status: 'CANCELLED',
+            cancellationReason: `Automatically cancelled - email not confirmed within ${emailConfirmationTimeout} minutes`,
+            emailConfirmationToken: null,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(appointments.id, apt.id));
+
+        return res.status(400).json({
+          success: false,
+          message: `Your confirmation time has expired (${emailConfirmationTimeout} minutes). The appointment has been cancelled. Please book a new appointment.`
+        });
+      }
+    }
 
     // Check autoConfirm setting from settings JSON (fallback to column, then default true)
     const autoConfirm = settings.autoConfirm ?? businessData.autoConfirm ?? true;
@@ -630,6 +707,7 @@ export const createManualAppointment = async (req, res) => {
     const {
       businessId,
       serviceId,
+      employeeId,
       appointmentDate,
       startTime,
       clientFirstName,
@@ -727,11 +805,48 @@ export const createManualAppointment = async (req, res) => {
     const endMins = endMinutes % 60;
     const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 
+    // Auto-assign employee when "Any available" is selected
+    const settings = businessData.settings || {};
+    let assignedEmployeeId = employeeId || null;
+    if (!employeeId && settings.allowEmployeeBooking) {
+      const serviceEmployees = await getEmployeesForService(serviceId, true);
+      if (serviceEmployees.length > 0) {
+        let bestEmployee = null;
+        let fewestAppointments = Infinity;
+
+        for (const emp of serviceEmployees) {
+          const empAppointments = await getExistingAppointments(
+            businessData.id, serviceId, appointmentDate, null, emp.id
+          );
+          const [h, m] = normalizedStartTime.split(':').map(Number);
+          const requestedStart = h * 60 + m;
+          const requestedEnd = requestedStart + serviceData.duration;
+          let overlapCount = 0;
+          for (const apt of empAppointments) {
+            const aptStart = parseInt(apt.start.split(':')[0]) * 60 + parseInt(apt.start.split(':')[1]);
+            const aptEnd = parseInt(apt.end.split(':')[0]) * 60 + parseInt(apt.end.split(':')[1]);
+            if (requestedStart < aptEnd && requestedEnd > aptStart) {
+              overlapCount++;
+            }
+          }
+          if (overlapCount < fewestAppointments) {
+            fewestAppointments = overlapCount;
+            bestEmployee = emp;
+          }
+        }
+
+        if (bestEmployee) {
+          assignedEmployeeId = bestEmployee.id;
+        }
+      }
+    }
+
     // Create appointment (manually created appointments are auto-confirmed)
     const newAppointment = {
       id: randomUUID(),
       businessId: businessData.id,
       serviceId: serviceData.id,
+      employeeId: assignedEmployeeId,
       clientUserId: null, // Manual booking
       clientFirstName,
       clientLastName,
@@ -1525,6 +1640,108 @@ export const contactClient = async (req, res) => {
 };
 
 /**
+ * Reassign appointment to a different employee (business owner only)
+ * PUT /api/appointments/:appointmentId/reassign
+ * Body: { employeeId }
+ */
+export const reassignAppointment = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { employeeId } = req.body;
+    const userId = req.user.id;
+
+    if (!employeeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'employeeId is required'
+      });
+    }
+
+    // Get appointment
+    const appointment = await db.select().from(appointments)
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+
+    if (!appointment.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    const apt = appointment[0];
+
+    // Verify business ownership
+    const business = await db.select().from(businesses)
+      .where(eq(businesses.id, apt.businessId))
+      .limit(1);
+
+    if (!business.length || business[0].ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this business.'
+      });
+    }
+
+    // Validate employee
+    const employee = await db.select().from(employees)
+      .where(and(
+        eq(employees.id, employeeId),
+        eq(employees.businessId, apt.businessId),
+        eq(employees.isActive, true)
+      ))
+      .limit(1);
+
+    if (!employee.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found or inactive'
+      });
+    }
+
+    // Verify employee is assigned to this service
+    const assignment = await db.select().from(employeeServices)
+      .where(and(
+        eq(employeeServices.employeeId, employeeId),
+        eq(employeeServices.serviceId, apt.serviceId)
+      ))
+      .limit(1);
+
+    if (!assignment.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected employee is not assigned to this service'
+      });
+    }
+
+    // Update appointment
+    await db.update(appointments)
+      .set({
+        employeeId,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(appointments.id, appointmentId));
+
+    res.json({
+      success: true,
+      message: `Appointment reassigned to ${employee[0].name}`,
+      data: {
+        employeeId: employee[0].id,
+        employeeName: employee[0].name
+      }
+    });
+
+  } catch (error) {
+    console.error('Reassign appointment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reassign appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * Manually trigger auto-complete for past appointments
  * POST /api/appointments/auto-complete
  * Runs the auto-complete process for the authenticated user's business
@@ -1693,6 +1910,7 @@ export default {
   updateAppointmentNotes,
   rescheduleAppointment,
   confirmAppointment,
+  reassignAppointment,
   cancelAppointmentByClient,
   contactClient,
   triggerAutoComplete

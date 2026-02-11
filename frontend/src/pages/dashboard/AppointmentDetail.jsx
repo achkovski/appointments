@@ -47,7 +47,9 @@ import {
   confirmAppointment as confirmAppointmentService,
   cancelAppointment as cancelAppointmentService,
   contactClient as contactClientService,
+  reassignAppointment as reassignAppointmentService,
 } from '../../services/appointmentsService';
+import { getEmployeesByService } from '../../services/employeesService';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastHelpers';
 
 const AppointmentDetail = () => {
@@ -69,6 +71,9 @@ const AppointmentDetail = () => {
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [contactSubject, setContactSubject] = useState('');
   const [contactMessage, setContactMessage] = useState('');
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [reassignEmployeeId, setReassignEmployeeId] = useState('');
+  const [serviceEmployees, setServiceEmployees] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Fetch appointment data from API
@@ -244,6 +249,47 @@ const AppointmentDetail = () => {
     } catch (err) {
       console.error('Error unapproving appointment:', err);
       toastError("Error", err.response?.data?.message || 'Failed to unapprove appointment');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenReassign = async () => {
+    try {
+      const serviceId = appointment.serviceId;
+      if (!serviceId) {
+        toastError("Error", "No service associated with this appointment");
+        return;
+      }
+      const response = await getEmployeesByService(serviceId);
+      const employeeList = response.employees || response.data?.employees || response.data || [];
+      setServiceEmployees(Array.isArray(employeeList) ? employeeList : []);
+      setReassignEmployeeId(appointment.employeeId || '');
+      setShowReassignDialog(true);
+    } catch (err) {
+      console.error('Error fetching employees:', err);
+      toastError("Error", "Failed to load employees for this service");
+    }
+  };
+
+  const handleReassign = async () => {
+    if (!reassignEmployeeId) {
+      toastWarning("Missing selection", "Please select an employee");
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const result = await reassignAppointmentService(id, reassignEmployeeId);
+      const newEmployee = {
+        id: reassignEmployeeId,
+        name: result.data?.employeeName || serviceEmployees.find(e => e.id === reassignEmployeeId)?.name || 'Employee'
+      };
+      setAppointment({ ...appointment, employeeId: reassignEmployeeId, employee: newEmployee });
+      setShowReassignDialog(false);
+      toastSuccess("Success!", `Appointment reassigned to ${newEmployee.name}`);
+    } catch (err) {
+      console.error('Error reassigning appointment:', err);
+      toastError("Error", err.response?.data?.message || 'Failed to reassign appointment');
     } finally {
       setActionLoading(false);
     }
@@ -431,15 +477,24 @@ const AppointmentDetail = () => {
                 {appointment.service?.name || appointment.serviceName || 'N/A'}
               </p>
             </div>
-            {appointment.employee && (
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Staff Member</p>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{appointment.employee.name}</span>
-                </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Staff Member</p>
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">
+                  {appointment.employee ? appointment.employee.name : 'Unassigned'}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={handleOpenReassign}
+                >
+                  <Edit className="mr-1 h-3 w-3" />
+                  {appointment.employee ? 'Reassign' : 'Assign'}
+                </Button>
               </div>
-            )}
+            </div>
             {appointment.reassignmentNote && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Reassignment Note</p>
@@ -786,6 +841,50 @@ const AppointmentDetail = () => {
               disabled={!rescheduleDate || !rescheduleTime || actionLoading}
             >
               {actionLoading ? 'Rescheduling...' : 'Reschedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reassign Employee Dialog */}
+      <Dialog open={showReassignDialog} onOpenChange={setShowReassignDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{appointment?.employee ? 'Reassign' : 'Assign'} Employee</DialogTitle>
+            <DialogDescription>
+              Select an employee to {appointment?.employee ? 'reassign' : 'assign'} this appointment to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Employee</Label>
+              {serviceEmployees.length > 0 ? (
+                <select
+                  value={reassignEmployeeId}
+                  onChange={(e) => setReassignEmployeeId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">Select an employee</option>
+                  {serviceEmployees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-sm text-muted-foreground">No employees are assigned to this service.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReassignDialog(false)} disabled={actionLoading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReassign}
+              disabled={!reassignEmployeeId || actionLoading || serviceEmployees.length === 0}
+            >
+              {actionLoading ? 'Reassigning...' : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>

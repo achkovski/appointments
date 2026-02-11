@@ -149,6 +149,17 @@ export const contactClient = async (appointmentId, subject, message) => {
 };
 
 /**
+ * Reassign appointment to a different employee
+ * @param {string} appointmentId - Appointment ID
+ * @param {string} employeeId - New employee ID
+ * @returns {Promise} - Reassignment result
+ */
+export const reassignAppointment = async (appointmentId, employeeId) => {
+  const response = await api.put(`/appointments/${appointmentId}/reassign`, { employeeId });
+  return response.data;
+};
+
+/**
  * Manually trigger auto-complete for past appointments
  * @returns {Promise} - Result with count of completed appointments
  */
@@ -166,6 +177,7 @@ export default {
   updateAppointmentNotes,
   confirmAppointment,
   cancelAppointment,
+  reassignAppointment,
   getUpcomingAppointments,
   getPastAppointments,
   getAvailableSlots,

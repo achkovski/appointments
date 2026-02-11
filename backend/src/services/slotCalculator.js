@@ -262,9 +262,10 @@ export async function getEmployeeBreaksForAvailability(employeeAvailabilityId) {
  * @param {string} dateStr - Date in YYYY-MM-DD format
  * @param {string} excludeAppointmentId - Optional appointment ID to exclude (for rescheduling)
  * @param {string} employeeId - Optional employee ID to filter by
+ * @param {number} emailConfirmationTimeout - Optional timeout in minutes for unconfirmed appointments
  * @returns {Promise<Array>} Array of appointments with start and end times
  */
-export async function getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId = null, employeeId = null) {
+export async function getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId = null, employeeId = null, emailConfirmationTimeout = 0) {
   const existingAppointments = await db.select().from(appointments)
     .where(and(
       eq(appointments.businessId, businessId),
@@ -276,6 +277,23 @@ export async function getExistingAppointments(businessId, serviceId, dateStr, ex
   let activeAppointments = existingAppointments.filter(
     apt => apt.status !== 'CANCELLED' && apt.status !== 'NO_SHOW' && apt.id !== excludeAppointmentId
   );
+
+  // Filter out expired unconfirmed appointments (pending + not email confirmed + past timeout)
+  if (emailConfirmationTimeout > 0) {
+    const now = new Date();
+    activeAppointments = activeAppointments.filter(apt => {
+      // Only filter pending appointments that haven't confirmed their email
+      if (apt.status === 'PENDING' && !apt.isEmailConfirmed && apt.emailConfirmationToken) {
+        const createdAt = new Date(apt.createdAt);
+        const expiresAt = new Date(createdAt.getTime() + emailConfirmationTimeout * 60 * 1000);
+        // If expired, don't count this appointment (it will be auto-cancelled)
+        if (now > expiresAt) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }
 
   // If employeeId is specified, filter by employee
   if (employeeId) {
@@ -479,8 +497,12 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       }
     }
 
-    // Get existing appointments (filtered by employee if specified)
-    const existingAppointments = await getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId, employeeId);
+    // Get email confirmation timeout from settings (in minutes, default 0 = no timeout)
+    const requireEmailConfirmation = settings.requireEmailConfirmation ?? businessData.requireEmailConfirmation ?? false;
+    const emailConfirmationTimeout = requireEmailConfirmation ? (settings.emailConfirmationTimeout ?? 15) : 0;
+
+    // Get existing appointments (filtered by employee if specified, expired unconfirmed filtered out)
+    const existingAppointments = await getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId, employeeId, emailConfirmationTimeout);
 
     // Determine capacity (use ?? instead of || to allow 0 for unlimited)
     const capacity = workingHours.capacityOverride ?? businessData.defaultCapacity ?? 1;

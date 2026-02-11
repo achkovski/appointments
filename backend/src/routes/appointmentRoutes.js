@@ -7,6 +7,7 @@ import {
   updateAppointmentNotes,
   rescheduleAppointment,
   confirmAppointment,
+  reassignAppointment,
   contactClient,
   triggerAutoComplete
 } from '../controllers/appointmentController.js';
@@ -68,6 +69,13 @@ router.put('/appointments/:appointmentId/notes', protect, updateAppointmentNotes
  * @access  Private (Business Owner)
  */
 router.put('/appointments/:appointmentId/reschedule', protect, rescheduleAppointment);
+
+/**
+ * @route   PUT /api/appointments/:appointmentId/reassign
+ * @desc    Reassign appointment to a different employee
+ * @access  Private (Business Owner)
+ */
+router.put('/appointments/:appointmentId/reassign', protect, reassignAppointment);
 
 /**
  * @route   POST /api/appointments/:appointmentId/contact
