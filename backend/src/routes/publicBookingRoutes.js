@@ -10,6 +10,7 @@ import {
   confirmAppointmentEmail,
   cancelAppointmentByClient
 } from '../controllers/appointmentController.js';
+import { bookingLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
@@ -46,7 +47,7 @@ router.post('/available-slots-range', getAvailableSlotsRange);
  * @desc    Create a new appointment (guest booking)
  * @access  Public
  */
-router.post('/book', createGuestAppointment);
+router.post('/book', bookingLimiter, createGuestAppointment);
 
 /**
  * @route   POST /api/public/confirm-appointment

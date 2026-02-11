@@ -28,6 +28,15 @@ import { emitToBusinessRoom } from '../config/socket.js';
  */
 export const createGuestAppointment = async (req, res) => {
   try {
+    // Honeypot check - bots fill hidden fields, real users don't
+    if (req.body.website) {
+      return res.status(200).json({
+        success: true,
+        message: 'Appointment created successfully',
+        data: { id: 'pending', status: 'PENDING_CONFIRMATION' }
+      });
+    }
+
     const {
       businessSlug,
       serviceId,

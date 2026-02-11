@@ -67,6 +67,23 @@ export const verificationLimiter = rateLimit({
 });
 
 /**
+ * Rate limiter for public booking endpoint
+ * Allows 10 booking attempts per hour per IP
+ * Prevents spam/fake appointment creation
+ */
+export const bookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Limit each IP to 10 booking attempts per hour
+  message: {
+    success: false,
+    error: 'Too many booking attempts from this IP, please try again later',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+/**
  * General API rate limiter
  * Allows 100 requests per 15 minutes per IP
  */
@@ -87,5 +104,6 @@ export default {
   loginLimiter,
   passwordResetLimiter,
   verificationLimiter,
+  bookingLimiter,
   apiLimiter,
 };

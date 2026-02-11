@@ -69,6 +69,7 @@ const BookingPage = () => {
     email: '',
     phone: '',
     notes: '',
+    website: '',
   });
 
   // Loading and error state
@@ -233,6 +234,7 @@ const BookingPage = () => {
         clientEmail: clientInfo.email.trim(),
         clientPhone: clientInfo.phone.trim(),
         clientNotes: clientInfo.notes.trim() || undefined,
+        website: clientInfo.website,
       };
 
       const response = await createBooking(bookingData);
@@ -662,6 +664,29 @@ const BookingPage = () => {
                     onChange={(e) => handleClientInfoChange('notes', e.target.value)}
                     placeholder="Any special requests or information..."
                     rows={4}
+                  />
+                </div>
+                {/* Honeypot field - hidden from real users, catches bots */}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    left: '-9999px',
+                    top: '-9999px',
+                    opacity: 0,
+                    height: 0,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <label htmlFor="website">Website</label>
+                  <input
+                    id="website"
+                    name="website"
+                    type="text"
+                    value={clientInfo.website}
+                    onChange={(e) => handleClientInfoChange('website', e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
                   />
                 </div>
                 <Button className="w-full" onClick={handleClientInfoSubmit}>
