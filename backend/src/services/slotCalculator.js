@@ -505,7 +505,7 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     const existingAppointments = await getExistingAppointments(businessId, serviceId, dateStr, excludeAppointmentId, employeeId, emailConfirmationTimeout);
 
     // Determine capacity (use ?? instead of || to allow 0 for unlimited)
-    const capacity = workingHours.capacityOverride ?? businessData.defaultCapacity ?? 1;
+    const capacity = workingHours.capacityOverride ?? serviceData.customCapacity ?? businessData.defaultCapacity ?? 1;
 
     const capacityMode = businessData.capacityMode || 'SINGLE';
 

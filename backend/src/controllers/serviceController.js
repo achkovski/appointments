@@ -21,6 +21,7 @@ export const createService = async (req, res) => {
       price,
       isActive = true,
       displayOrder = 0,
+      customCapacity,
     } = req.body;
 
     // Validation
@@ -45,6 +46,16 @@ export const createService = async (req, res) => {
         success: false,
         error: 'Service duration must be in 5-minute increments',
       });
+    }
+
+    // Validate customCapacity if provided
+    if (customCapacity !== undefined && customCapacity !== null) {
+      if (typeof customCapacity !== 'number' || !Number.isInteger(customCapacity) || customCapacity < 1) {
+        return res.status(400).json({
+          success: false,
+          error: 'Custom capacity must be a positive integer',
+        });
+      }
     }
 
     // Check if business exists and belongs to user
@@ -73,6 +84,7 @@ export const createService = async (req, res) => {
       price: price || null,
       isActive,
       displayOrder,
+      customCapacity: customCapacity ?? null,
       updatedAt: now,
     }).returning();
 
@@ -201,6 +213,7 @@ export const updateService = async (req, res) => {
       price,
       isActive,
       displayOrder,
+      customCapacity,
     } = req.body;
 
     // Get service
@@ -247,6 +260,16 @@ export const updateService = async (req, res) => {
       }
     }
 
+    // Validate customCapacity if provided
+    if (customCapacity !== undefined && customCapacity !== null) {
+      if (typeof customCapacity !== 'number' || !Number.isInteger(customCapacity) || customCapacity < 1) {
+        return res.status(400).json({
+          success: false,
+          error: 'Custom capacity must be a positive integer',
+        });
+      }
+    }
+
     // Prepare update data
     const updateData = {
       updatedAt: new Date(),
@@ -258,6 +281,7 @@ export const updateService = async (req, res) => {
     if (price !== undefined) updateData.price = price || null;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
+    if (customCapacity !== undefined) updateData.customCapacity = customCapacity;
 
     // Update service
     const [updatedService] = await db

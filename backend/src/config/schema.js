@@ -81,6 +81,7 @@ export const services = pgTable("services", {
 	price: numeric({ precision: 10, scale:  2 }),
 	isActive: boolean("is_active").default(true).notNull(),
 	displayOrder: integer("display_order").default(0).notNull(),
+	customCapacity: integer("custom_capacity"),
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull(),
 }, (table) => [

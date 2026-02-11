@@ -22,6 +22,7 @@ import {
   ToggleLeft,
   ToggleRight,
   AlertCircle,
+  Users,
 } from 'lucide-react';
 import { useBusiness } from '../../context/BusinessContext';
 import { toastSuccess, toastError } from '../../utils/toastHelpers';
@@ -55,6 +56,8 @@ const Services = () => {
     duration: 60,
     price: '',
     isActive: true,
+    useCustomCapacity: false,
+    customCapacity: '',
   });
   const [formErrors, setFormErrors] = useState({});
 
@@ -86,6 +89,8 @@ const Services = () => {
       duration: 60,
       price: '',
       isActive: true,
+      useCustomCapacity: false,
+      customCapacity: '',
     });
     setFormErrors({});
   };
@@ -105,6 +110,10 @@ const Services = () => {
       errors.price = 'Price must be a valid positive number';
     }
 
+    if (formData.useCustomCapacity && (!formData.customCapacity || parseInt(formData.customCapacity) < 1)) {
+      errors.customCapacity = 'Custom capacity must be at least 1';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -117,7 +126,9 @@ const Services = () => {
       const serviceData = {
         ...formData,
         price: formData.price ? parseFloat(formData.price) : null,
+        customCapacity: formData.useCustomCapacity ? parseInt(formData.customCapacity) : null,
       };
+      delete serviceData.useCustomCapacity;
       await createService(business.id, serviceData);
       await fetchServices();
       setShowAddDialog(false);
@@ -139,7 +150,9 @@ const Services = () => {
       const serviceData = {
         ...formData,
         price: formData.price ? parseFloat(formData.price) : null,
+        customCapacity: formData.useCustomCapacity ? parseInt(formData.customCapacity) : null,
       };
+      delete serviceData.useCustomCapacity;
       await updateService(selectedService.id, serviceData);
       await fetchServices();
       setShowEditDialog(false);
@@ -189,6 +202,8 @@ const Services = () => {
       duration: service.duration,
       price: service.price || '',
       isActive: service.isActive,
+      useCustomCapacity: service.customCapacity != null,
+      customCapacity: service.customCapacity != null ? String(service.customCapacity) : '',
     });
     setShowEditDialog(true);
   };
@@ -292,6 +307,14 @@ const Services = () => {
                       {service.price ? `$${service.price}` : '$0'}
                     </span>
                   </div>
+                  {business?.capacityMode === 'MULTIPLE' && service.customCapacity != null && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-5 h-5">
+                        <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      </div>
+                      <span className="text-sm">Capacity: {service.customCapacity}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 pt-3 border-t mt-auto">
@@ -399,6 +422,42 @@ const Services = () => {
                 )}
               </div>
             </div>
+
+            {business?.capacityMode === 'MULTIPLE' && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="useCustomCapacity"
+                    checked={formData.useCustomCapacity}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      useCustomCapacity: e.target.checked,
+                      customCapacity: e.target.checked ? (formData.customCapacity || String(business.defaultCapacity || 1)) : '',
+                    })}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="useCustomCapacity">Use custom capacity for this service</Label>
+                </div>
+                {formData.useCustomCapacity && (
+                  <div className="space-y-1">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={formData.customCapacity}
+                      onChange={(e) => setFormData({ ...formData, customCapacity: e.target.value })}
+                      placeholder={`Default: ${business.defaultCapacity || 1}`}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Overrides the business default capacity ({business.defaultCapacity || 1}) for this service
+                    </p>
+                    {formErrors.customCapacity && (
+                      <p className="text-sm text-destructive">{formErrors.customCapacity}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -485,6 +544,42 @@ const Services = () => {
                 )}
               </div>
             </div>
+
+            {business?.capacityMode === 'MULTIPLE' && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="editUseCustomCapacity"
+                    checked={formData.useCustomCapacity}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      useCustomCapacity: e.target.checked,
+                      customCapacity: e.target.checked ? (formData.customCapacity || String(business.defaultCapacity || 1)) : '',
+                    })}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="editUseCustomCapacity">Use custom capacity for this service</Label>
+                </div>
+                {formData.useCustomCapacity && (
+                  <div className="space-y-1">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={formData.customCapacity}
+                      onChange={(e) => setFormData({ ...formData, customCapacity: e.target.value })}
+                      placeholder={`Default: ${business.defaultCapacity || 1}`}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Overrides the business default capacity ({business.defaultCapacity || 1}) for this service
+                    </p>
+                    {formErrors.customCapacity && (
+                      <p className="text-sm text-destructive">{formErrors.customCapacity}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
