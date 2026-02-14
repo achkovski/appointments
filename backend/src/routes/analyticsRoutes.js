@@ -6,7 +6,9 @@ import {
   getPopularTimeSlots,
   getServicePerformance,
   getEmployeePerformance,
-  exportAnalytics
+  exportAnalytics,
+  getClientAnalytics,
+  getRevenueOverTime
 } from '../controllers/analyticsController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -72,5 +74,21 @@ router.get('/analytics/employees', protect, getEmployeePerformance);
  * @query   ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&type=appointments
  */
 router.get('/analytics/export', protect, exportAnalytics);
+
+/**
+ * @route   GET /api/analytics/clients
+ * @desc    Get client analytics (new vs returning, retention, top clients)
+ * @access  Private (Business Owner)
+ * @query   ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ */
+router.get('/analytics/clients', protect, getClientAnalytics);
+
+/**
+ * @route   GET /api/analytics/revenue
+ * @desc    Get revenue over time with period comparison
+ * @access  Private (Business Owner)
+ * @query   ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&groupBy=day|week|month
+ */
+router.get('/analytics/revenue', protect, getRevenueOverTime);
 
 export default router;

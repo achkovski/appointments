@@ -17,6 +17,7 @@ import Services from './pages/dashboard/Services';
 import Employees from './pages/dashboard/Employees';
 import Availability from './pages/dashboard/Availability';
 import Analytics from './pages/dashboard/Analytics';
+import ReportPreview from './pages/dashboard/ReportPreview';
 import BusinessProfile from './pages/dashboard/BusinessProfile';
 import Settings from './pages/dashboard/Settings';
 import BookingPage from './pages/BookingPage';
@@ -96,6 +97,18 @@ function App() {
               <PrivateRoute>
                 <BusinessProvider>
                   <BusinessSetup />
+                </BusinessProvider>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Protected report preview - outside dashboard layout for clean printing */}
+          <Route
+            path="/dashboard/reports"
+            element={
+              <PrivateRoute>
+                <BusinessProvider>
+                  <ReportPreview />
                 </BusinessProvider>
               </PrivateRoute>
             }

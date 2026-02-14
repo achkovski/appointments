@@ -572,7 +572,7 @@ export const exportAnalytics = async (req, res) => {
       });
     }
 
-    const { startDate, endDate, type = 'appointments' } = req.query;
+    const { startDate, endDate, type = 'appointments', format } = req.query;
 
     const end = endDate ? endDate : new Date().toISOString().split('T')[0];
     const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -589,6 +589,52 @@ export const exportAnalytics = async (req, res) => {
           )
         )
         .orderBy(desc(appointments.appointmentDate));
+
+      // Return JSON if format=json is requested (used by report preview)
+      if (format === 'json') {
+        // Get services for name lookup
+        const allServices = await db
+          .select()
+          .from(services)
+          .where(eq(services.businessId, businessId));
+
+        const serviceMap = {};
+        allServices.forEach(s => { serviceMap[s.id] = s; });
+
+        // Get employees for name lookup
+        const allEmployees = await db
+          .select()
+          .from(employees)
+          .where(eq(employees.businessId, businessId));
+
+        const employeeMap = {};
+        allEmployees.forEach(e => { employeeMap[e.id] = e; });
+
+        const enrichedData = appointmentData.map(a => ({
+          id: a.id,
+          clientFirstName: a.clientFirstName || '',
+          clientLastName: a.clientLastName || '',
+          clientEmail: a.clientEmail || '',
+          clientPhone: a.clientPhone || '',
+          serviceName: serviceMap[a.serviceId]?.name || 'Unknown',
+          employeeName: a.employeeId ? (employeeMap[a.employeeId]?.name || 'Unknown') : '',
+          appointmentDate: a.appointmentDate,
+          startTime: a.startTime,
+          endTime: a.endTime,
+          status: a.status,
+          notes: a.notes || '',
+          createdAt: a.createdAt,
+        }));
+
+        return res.json({
+          success: true,
+          data: {
+            appointments: enrichedData,
+            total: enrichedData.length,
+            dateRange: { start, end },
+          },
+        });
+      }
 
       // Convert to CSV
       const headers = ['ID', 'Client First Name', 'Client Last Name', 'Client Email', 'Client Phone', 'Service ID', 'Date', 'Start Time', 'End Time', 'Status', 'Notes', 'Created At'];
@@ -628,6 +674,290 @@ export const exportAnalytics = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to export analytics',
+      error: error.message,
+    });
+  }
+};
+
+// Get client analytics
+export const getClientAnalytics = async (req, res) => {
+  try {
+    const businessId = await getBusinessIdForUser(req.user.id);
+
+    if (!businessId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found for this user',
+      });
+    }
+
+    const { startDate, endDate } = req.query;
+
+    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
+    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    // Get appointments in date range
+    const appointmentData = await db
+      .select({
+        clientEmail: appointments.clientEmail,
+        clientFirstName: appointments.clientFirstName,
+        clientLastName: appointments.clientLastName,
+        appointmentDate: appointments.appointmentDate,
+        status: appointments.status,
+        serviceId: appointments.serviceId,
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.businessId, businessId),
+          gte(appointments.appointmentDate, start),
+          lte(appointments.appointmentDate, end)
+        )
+      );
+
+    // Get ALL appointments (no date filter) to find each client's first-ever visit
+    const allAppointments = await db
+      .select({
+        clientEmail: appointments.clientEmail,
+        appointmentDate: appointments.appointmentDate,
+      })
+      .from(appointments)
+      .where(eq(appointments.businessId, businessId));
+
+    // Build first-visit map
+    const firstVisitMap = {};
+    allAppointments.forEach(a => {
+      const email = a.clientEmail;
+      if (!email) return;
+      if (!firstVisitMap[email] || a.appointmentDate < firstVisitMap[email]) {
+        firstVisitMap[email] = a.appointmentDate;
+      }
+    });
+
+    // Get services for price lookup
+    const allServices = await db
+      .select()
+      .from(services)
+      .where(eq(services.businessId, businessId));
+
+    const serviceMap = {};
+    allServices.forEach(s => { serviceMap[s.id] = s; });
+
+    // Group by client email
+    const clientMap = {};
+    appointmentData.forEach(a => {
+      const email = a.clientEmail;
+      if (!email) return;
+      if (!clientMap[email]) {
+        clientMap[email] = {
+          name: `${a.clientFirstName || ''} ${a.clientLastName || ''}`.trim(),
+          email,
+          visits: 0,
+          totalSpent: 0,
+          lastVisitDate: a.appointmentDate,
+        };
+      }
+      clientMap[email].visits++;
+      if (a.status === 'COMPLETED') {
+        clientMap[email].totalSpent += parseFloat(serviceMap[a.serviceId]?.price) || 0;
+      }
+      if (a.appointmentDate > clientMap[email].lastVisitDate) {
+        clientMap[email].lastVisitDate = a.appointmentDate;
+      }
+    });
+
+    const clients = Object.values(clientMap);
+    const totalUniqueClients = clients.length;
+
+    // New vs returning
+    let newClients = 0;
+    let returningClients = 0;
+    clients.forEach(client => {
+      const firstVisit = firstVisitMap[client.email];
+      if (firstVisit && firstVisit >= start && firstVisit <= end) {
+        newClients++;
+      } else {
+        returningClients++;
+      }
+    });
+
+    // Retention rate (clients with > 1 booking in period)
+    const repeatClients = clients.filter(c => c.visits > 1).length;
+    const retentionRate = totalUniqueClients > 0
+      ? parseFloat(((repeatClients / totalUniqueClients) * 100).toFixed(1))
+      : 0;
+
+    // Average bookings per client
+    const totalAppointmentsInRange = appointmentData.filter(a => a.clientEmail).length;
+    const avgBookingsPerClient = totalUniqueClients > 0
+      ? parseFloat((totalAppointmentsInRange / totalUniqueClients).toFixed(1))
+      : 0;
+
+    // Top 10 clients by visits
+    const topClients = clients
+      .sort((a, b) => b.visits - a.visits)
+      .slice(0, 10);
+
+    res.json({
+      success: true,
+      data: {
+        newClients,
+        returningClients,
+        totalUniqueClients,
+        retentionRate,
+        avgBookingsPerClient,
+        topClients,
+        dateRange: { start, end },
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching client analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch client analytics',
+      error: error.message,
+    });
+  }
+};
+
+// Get revenue over time
+export const getRevenueOverTime = async (req, res) => {
+  try {
+    const businessId = await getBusinessIdForUser(req.user.id);
+
+    if (!businessId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Business not found for this user',
+      });
+    }
+
+    const { startDate, endDate, groupBy = 'day' } = req.query;
+
+    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
+    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    // Get COMPLETED appointments in the date range
+    const completedAppointments = await db
+      .select({
+        appointmentDate: appointments.appointmentDate,
+        serviceId: appointments.serviceId,
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.businessId, businessId),
+          eq(appointments.status, 'COMPLETED'),
+          gte(appointments.appointmentDate, start),
+          lte(appointments.appointmentDate, end)
+        )
+      )
+      .orderBy(appointments.appointmentDate);
+
+    // Get services for price lookup
+    const allServices = await db
+      .select()
+      .from(services)
+      .where(eq(services.businessId, businessId));
+
+    const serviceMap = {};
+    allServices.forEach(s => { serviceMap[s.id] = s; });
+
+    // Group revenue by period
+    const revenueBuckets = {};
+    completedAppointments.forEach(a => {
+      const date = new Date(a.appointmentDate);
+      let key;
+
+      if (groupBy === 'week') {
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        key = weekStart.toISOString().split('T')[0];
+      } else if (groupBy === 'month') {
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+      } else {
+        key = a.appointmentDate;
+      }
+
+      if (!revenueBuckets[key]) {
+        revenueBuckets[key] = { date: key, revenue: 0, count: 0 };
+      }
+      revenueBuckets[key].revenue += parseFloat(serviceMap[a.serviceId]?.price) || 0;
+      revenueBuckets[key].count++;
+    });
+
+    const revenueTrend = Object.values(revenueBuckets)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map(r => ({ ...r, revenue: parseFloat(r.revenue.toFixed(2)) }));
+
+    // Summary stats
+    const totalRevenue = completedAppointments.reduce((sum, a) => {
+      return sum + (parseFloat(serviceMap[a.serviceId]?.price) || 0);
+    }, 0);
+    const totalCompletedAppointments = completedAppointments.length;
+    const daysInRange = Math.max(1, Math.ceil((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)) + 1);
+
+    // Period comparison
+    const periodDays = daysInRange;
+    const prevEnd = new Date(start);
+    prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - periodDays + 1);
+
+    const prevStartStr = prevStart.toISOString().split('T')[0];
+    const prevEndStr = prevEnd.toISOString().split('T')[0];
+
+    const prevAppointments = await db
+      .select({
+        serviceId: appointments.serviceId,
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.businessId, businessId),
+          eq(appointments.status, 'COMPLETED'),
+          gte(appointments.appointmentDate, prevStartStr),
+          lte(appointments.appointmentDate, prevEndStr)
+        )
+      );
+
+    const previousRevenue = prevAppointments.reduce((sum, a) => {
+      return sum + (parseFloat(serviceMap[a.serviceId]?.price) || 0);
+    }, 0);
+
+    const revenueChange = totalRevenue - previousRevenue;
+    const revenueChangePercent = previousRevenue > 0
+      ? parseFloat(((revenueChange / previousRevenue) * 100).toFixed(1))
+      : null;
+
+    res.json({
+      success: true,
+      data: {
+        revenueTrend,
+        summary: {
+          totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+          totalCompletedAppointments,
+          avgRevenuePerAppointment: totalCompletedAppointments > 0
+            ? parseFloat((totalRevenue / totalCompletedAppointments).toFixed(2))
+            : 0,
+          avgRevenuePerDay: parseFloat((totalRevenue / daysInRange).toFixed(2)),
+          daysInRange,
+        },
+        comparison: {
+          currentRevenue: parseFloat(totalRevenue.toFixed(2)),
+          previousRevenue: parseFloat(previousRevenue.toFixed(2)),
+          revenueChange: parseFloat(revenueChange.toFixed(2)),
+          revenueChangePercent,
+        },
+        groupBy,
+        dateRange: { start, end },
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching revenue analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch revenue analytics',
       error: error.message,
     });
   }

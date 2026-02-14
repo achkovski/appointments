@@ -105,6 +105,60 @@ export const getEmployeePerformance = async (params = {}) => {
 };
 
 /**
+ * Get client analytics (new vs returning, retention, top clients)
+ * @param {Object} params - Query parameters
+ * @param {string} params.startDate - Start date (YYYY-MM-DD)
+ * @param {string} params.endDate - End date (YYYY-MM-DD)
+ * @returns {Promise} - Client analytics data
+ */
+export const getClientAnalytics = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  if (params.startDate) queryParams.append('startDate', params.startDate);
+  if (params.endDate) queryParams.append('endDate', params.endDate);
+
+  const response = await api.get(`/analytics/clients?${queryParams}`);
+  return response.data;
+};
+
+/**
+ * Get revenue over time with period comparison
+ * @param {Object} params - Query parameters
+ * @param {string} params.startDate - Start date (YYYY-MM-DD)
+ * @param {string} params.endDate - End date (YYYY-MM-DD)
+ * @param {string} params.groupBy - Grouping: 'day', 'week', or 'month'
+ * @returns {Promise} - Revenue analytics data
+ */
+export const getRevenueOverTime = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  if (params.startDate) queryParams.append('startDate', params.startDate);
+  if (params.endDate) queryParams.append('endDate', params.endDate);
+  if (params.groupBy) queryParams.append('groupBy', params.groupBy);
+
+  const response = await api.get(`/analytics/revenue?${queryParams}`);
+  return response.data;
+};
+
+/**
+ * Get appointment list as JSON (for report preview)
+ * @param {Object} params - Query parameters
+ * @param {string} params.startDate - Start date (YYYY-MM-DD)
+ * @param {string} params.endDate - End date (YYYY-MM-DD)
+ * @returns {Promise} - Appointment list data
+ */
+export const getAppointmentList = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  if (params.startDate) queryParams.append('startDate', params.startDate);
+  if (params.endDate) queryParams.append('endDate', params.endDate);
+  queryParams.append('format', 'json');
+
+  const response = await api.get(`/analytics/export?${queryParams}`);
+  return response.data;
+};
+
+/**
  * Export analytics data as CSV
  * @param {Object} params - Query parameters
  * @param {string} params.startDate - Start date (YYYY-MM-DD)
