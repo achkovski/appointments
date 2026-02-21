@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }) => {
    */
   const updateUser = (userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('user', JSON.stringify(userData)); // non-sensitive, used for instant startup
   };
 
   const value = {
