@@ -75,13 +75,19 @@ export const register = async (req, res) => {
       // Continue with registration even if email fails
     }
 
-    // Generate JWT
+    // Generate JWT and set as httpOnly cookie
     const token = generateJWT(newUser.id, newUser.email, newUser.role);
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
     const response = {
       success: true,
       message: 'User registered successfully. Please verify your email.',
-      token,
       user: newUser,
     };
 
@@ -139,8 +145,15 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generate JWT
+    // Generate JWT and set as httpOnly cookie
     const token = generateJWT(user.id, user.email, user.role);
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
     // Fetch user's business if they have one
     let businessId = null;
@@ -166,7 +179,6 @@ export const login = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      token,
       user: {
         ...userWithoutPassword,
         businessId,
@@ -443,11 +455,72 @@ export const resetPassword = async (req, res) => {
 };
 
 /**
- * @desc    Logout user (client-side should remove token)
- * @route   POST /api/auth/logout
+ * @desc    Change authenticated user's password
+ * @route   POST /api/auth/change-password
  * @access  Private
  */
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide current and new password',
+      });
+    }
+
+    // Fetch full record to get passwordHash — protect middleware only selects safe columns
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, req.user.id),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'Current password is incorrect',
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await db.update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, req.user.id));
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error changing password',
+    });
+  }
+};
+
+/**
+ * @desc    Logout user - clears the auth cookie
+ * @route   POST /api/auth/logout
+ * @access  Public (intentionally — cookie must be clearable even after token expiry)
+ */
 export const logout = async (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+  });
   res.status(200).json({
     success: true,
     message: 'Logged out successfully',

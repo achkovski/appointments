@@ -12,9 +12,9 @@ import api from './api';
 export const register = async (userData) => {
   const response = await api.post('/auth/register', userData);
 
-  // Store token in localStorage
-  if (response.data.token) {
-    localStorage.setItem('token', response.data.token);
+  // Token is set as httpOnly cookie by the server.
+  // Store user object locally for instant startup rendering (non-sensitive).
+  if (response.data.user) {
     localStorage.setItem('user', JSON.stringify(response.data.user));
   }
 
@@ -30,9 +30,9 @@ export const register = async (userData) => {
 export const login = async (email, password) => {
   const response = await api.post('/auth/login', { email, password });
 
-  // Store token in localStorage
-  if (response.data.token) {
-    localStorage.setItem('token', response.data.token);
+  // Token is set as httpOnly cookie by the server.
+  // Store user object locally for instant startup rendering (non-sensitive).
+  if (response.data.user) {
     localStorage.setItem('user', JSON.stringify(response.data.user));
   }
 
@@ -45,10 +45,9 @@ export const login = async (email, password) => {
  */
 export const logout = async () => {
   try {
+    // Server clears the httpOnly cookie
     await api.post('/auth/logout');
   } finally {
-    // Clear localStorage regardless of API response
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('businessId');
   }
@@ -59,12 +58,8 @@ export const logout = async () => {
  * @returns {Promise} - New token
  */
 export const refreshToken = async () => {
+  // Cookie rotation handled server-side if implemented
   const response = await api.post('/auth/refresh');
-
-  if (response.data.token) {
-    localStorage.setItem('token', response.data.token);
-  }
-
   return response.data;
 };
 
@@ -109,19 +104,11 @@ export const getCurrentUser = () => {
 };
 
 /**
- * Get current token from localStorage
- * @returns {string|null} - Current token or null
- */
-export const getToken = () => {
-  return localStorage.getItem('token');
-};
-
-/**
- * Check if user is authenticated
- * @returns {boolean} - True if user has valid token
+ * Check if user is authenticated (cookie is httpOnly so we check the cached user object)
+ * @returns {boolean} - True if a user session is likely active
  */
 export const isAuthenticated = () => {
-  return !!getToken();
+  return !!getCurrentUser();
 };
 
 /**
@@ -133,7 +120,7 @@ export const isAuthenticated = () => {
 export const updateUser = async (userId, userData) => {
   const response = await api.put(`/users/${userId}`, userData);
 
-  // Update user in localStorage
+  // Keep cached user object up to date for fast startup
   if (response.data.user) {
     localStorage.setItem('user', JSON.stringify(response.data.user));
   }
@@ -160,7 +147,6 @@ export default {
   forgotPassword,
   resetPassword,
   getCurrentUser,
-  getToken,
   isAuthenticated,
   updateUser,
   changePassword,

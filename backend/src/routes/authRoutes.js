@@ -7,6 +7,7 @@ import {
   verifyEmail,
   forgotPassword,
   resetPassword,
+  changePassword,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import {
@@ -33,6 +34,10 @@ router.post('/reset-password', passwordResetLimiter, validateToken, validatePass
 
 // Protected routes (require authentication)
 router.get('/me', protect, getMe);
-router.post('/logout', protect, logout);
+router.post('/change-password', protect, validatePassword, changePassword);
+
+// Logout is intentionally public — the cookie must be clearable even if the token
+// has already expired, so protect middleware is not used here.
+router.post('/logout', logout);
 
 export default router;
