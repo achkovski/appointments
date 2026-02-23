@@ -30,6 +30,8 @@ export const createGuestAppointment = async (req, res) => {
   try {
     // Honeypot check - bots fill hidden fields, real users don't
     if (req.body.website) {
+      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+      console.log(`[HONEYPOT] Spam booking rejected | IP: ${ip} | Time: ${new Date().toISOString()} | Value: "${req.body.website}"`);
       return res.status(200).json({
         success: true,
         message: 'Appointment created successfully',
