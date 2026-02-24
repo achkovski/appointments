@@ -138,6 +138,21 @@ export const changePassword = async (passwordData) => {
   return response.data;
 };
 
+/**
+ * Permanently delete the authenticated user's account and all associated data
+ * @param {string} password - User's current password for confirmation
+ * @returns {Promise} - Deletion confirmation
+ */
+export const deleteAccount = async (password) => {
+  try {
+    const response = await api.delete('/auth/account', { data: { password } });
+    return response.data;
+  } finally {
+    localStorage.removeItem('user');
+    localStorage.removeItem('businessId');
+  }
+};
+
 export default {
   register,
   login,
@@ -150,4 +165,5 @@ export default {
   isAuthenticated,
   updateUser,
   changePassword,
+  deleteAccount,
 };

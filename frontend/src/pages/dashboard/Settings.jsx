@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -13,11 +14,12 @@ import {
   CheckCircle,
   AlertCircle,
   Zap,
+  Trash2,
 } from 'lucide-react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { updateBusiness } from '../../services/businessService';
-import { updateUser, changePassword } from '../../services/authService';
+import { updateUser, changePassword, deleteAccount } from '../../services/authService';
 import { triggerAutoComplete } from '../../services/appointmentsService';
 
 const TIME_SLOT_OPTIONS = [15, 30, 45, 60];
@@ -48,12 +50,19 @@ const AUTO_COMPLETE_GRACE_OPTIONS = [
 ];
 
 const Settings = () => {
+  const navigate = useNavigate();
   const { business, loading: businessLoading, updateBusiness: updateBusinessContext } = useBusiness();
-  const { user, updateUser: updateUserContext } = useAuth();
+  const { user, updateUser: updateUserContext, logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Delete account state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   // Booking Settings
   const [bookingSettings, setBookingSettings] = useState({
@@ -336,6 +345,24 @@ const Settings = () => {
       setError(err.response?.data?.message || 'Failed to run auto-complete');
     } finally {
       setAutoCompleteLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteError('Please enter your password to confirm deletion');
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+      setDeleteError(null);
+      await deleteAccount(deletePassword);
+      await logout();
+      navigate('/');
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || 'Failed to delete account. Please try again.');
+      setDeleteLoading(false);
     }
   };
 
@@ -923,6 +950,81 @@ const Settings = () => {
                 {loading ? 'Saving...' : 'Save Advanced Settings'}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+        {/* Danger Zone */}
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Danger Zone
+            </CardTitle>
+            <CardDescription>
+              Permanently delete your account and all associated data
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-2">
+              <p className="font-medium text-sm">This action is irreversible. Deleting your account will permanently remove:</p>
+              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                <li>Your account and login credentials</li>
+                <li>Your business profile and all settings</li>
+                <li>All appointments, services, and employees</li>
+                <li>All analytics and scheduling data</li>
+              </ul>
+            </div>
+
+            {!showDeleteConfirm ? (
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Delete My Account
+              </Button>
+            ) : (
+              <div className="space-y-4 pt-2">
+                <p className="text-sm font-medium">Enter your password to confirm deletion:</p>
+                <div className="space-y-2">
+                  <Input
+                    type="password"
+                    placeholder="Your current password"
+                    value={deletePassword}
+                    onChange={(e) => {
+                      setDeletePassword(e.target.value);
+                      setDeleteError(null);
+                    }}
+                    className="border-destructive focus-visible:ring-destructive"
+                    autoComplete="current-password"
+                  />
+                  {deleteError && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {deleteError}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAccount}
+                    disabled={deleteLoading}
+                  >
+                    {deleteLoading ? 'Deleting...' : 'Permanently Delete Account'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeletePassword('');
+                      setDeleteError(null);
+                    }}
+                    disabled={deleteLoading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

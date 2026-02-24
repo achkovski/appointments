@@ -511,6 +511,66 @@ export const changePassword = async (req, res) => {
 };
 
 /**
+ * @desc    Delete the authenticated user's account and all associated data
+ * @route   DELETE /api/auth/account
+ * @access  Private
+ */
+export const deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide your password to confirm account deletion',
+      });
+    }
+
+    // Fetch full record to get passwordHash
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, req.user.id),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'Incorrect password',
+      });
+    }
+
+    // Delete user — DB cascade handles businesses, services, appointments,
+    // availability, employees, analytics, and all child records automatically.
+    await db.delete(users).where(eq(users.id, req.user.id));
+
+    // Clear auth cookie
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error deleting account',
+    });
+  }
+};
+
+/**
  * @desc    Logout user - clears the auth cookie
  * @route   POST /api/auth/logout
  * @access  Public (intentionally — cookie must be clearable even after token expiry)
