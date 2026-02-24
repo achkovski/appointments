@@ -1,5 +1,3 @@
-import { Helmet } from 'react-helmet-async';
-
 const SEOHead = ({
   title = 'TimeSnap.io - Smart Appointment Booking for Every Business',
   description = 'Modern appointment scheduling software for salons, clinics, consultants, and every business in between. Free during beta. 24/7 online booking, automated reminders, and real-time analytics.',
@@ -8,7 +6,7 @@ const SEOHead = ({
   canonicalUrl = window.location.href,
 }) => {
   return (
-    <Helmet>
+    <>
       {/* Basic Meta Tags */}
       <title>{title}</title>
       <meta name="description" content={description} />
@@ -29,7 +27,7 @@ const SEOHead = ({
 
       {/* Canonical URL */}
       <link rel="canonical" href={canonicalUrl} />
-    </Helmet>
+    </>
   );
 };
 
