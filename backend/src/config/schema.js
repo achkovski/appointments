@@ -59,6 +59,7 @@ export const businesses = pgTable("businesses", {
 	autoConfirm: boolean("auto_confirm").default(true).notNull(),
 	requireEmailConfirmation: boolean("require_email_confirmation").default(false).notNull(),
 	settings: jsonb(),
+	timezone: text().default('Europe/Skopje').notNull(),
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull(),
 }, (table) => [

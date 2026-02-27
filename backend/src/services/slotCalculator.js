@@ -1,6 +1,7 @@
 import db from '../config/database.js';
 import { availability, breaks, specialDates, appointments, services, businesses, employees, employeeAvailability, employeeBreaks, employeeSpecialDates, employeeServices } from '../config/schema.js';
 import { eq, and } from 'drizzle-orm';
+import { nowInTimezone, currentMinutesInTimezone } from '../utils/timezone.js';
 
 /**
  * SLOT CALCULATION ENGINE
@@ -379,24 +380,7 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
       throw new Error('Invalid date format. Use YYYY-MM-DD');
     }
 
-    // Check if date is in the past (compare date strings to avoid timezone issues)
-    // Only block past dates for public bookings (clients)
-    // Business users (allowPastSlots=true) can create appointments for past dates
-    const today = new Date();
-    const todayStr = today.getFullYear() + '-' +
-      String(today.getMonth() + 1).padStart(2, '0') + '-' +
-      String(today.getDate()).padStart(2, '0');
-
-    if (!allowPastSlots && dateStr < todayStr) {
-      return {
-        date: dateStr,
-        available: false,
-        reason: 'Date is in the past',
-        slots: []
-      };
-    }
-
-    // Get business details
+    // Get business details (fetched first so we can use the business timezone)
     const business = await db.select().from(businesses)
       .where(eq(businesses.id, businessId))
       .limit(1);
@@ -406,6 +390,21 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
     }
 
     const businessData = business[0];
+    const businessTimezone = businessData.timezone || 'Europe/Skopje';
+
+    // Check if date is in the past using business timezone
+    // Only block past dates for public bookings (clients)
+    // Business users (allowPastSlots=true) can create appointments for past dates
+    const { date: todayStr } = nowInTimezone(businessTimezone);
+
+    if (!allowPastSlots && dateStr < todayStr) {
+      return {
+        date: dateStr,
+        available: false,
+        reason: 'Date is in the past',
+        slots: []
+      };
+    }
     const settings = businessData.settings || {};
 
     // Get buffer time from settings (in minutes, default 0)
@@ -533,7 +532,7 @@ export async function calculateAvailableSlots(businessId, serviceId, dateStr, ex
 
     // Check if this is today and get current time for filtering past slots
     const isToday = dateStr === todayStr;
-    const currentMinutes = isToday ? (today.getHours() * 60 + today.getMinutes()) : 0;
+    const currentMinutes = isToday ? currentMinutesInTimezone(businessTimezone) : 0;
 
     // Generate all possible slots based on interval
     const possibleSlots = [];

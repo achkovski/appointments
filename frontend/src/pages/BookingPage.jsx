@@ -12,6 +12,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import StatusBadge from '../components/appointments/StatusBadge';
 import { toastSuccess, toastError } from '../utils/toastHelpers';
 import { getCityDisplayName } from '../utils/locationConstants';
+import { isTodayInTimezone, isSlotPastInTimezone, todayStartInTimezone } from '../utils/timezone';
 import {
   getBusinessBySlug,
   getAvailableSlots,
@@ -141,13 +142,8 @@ const BookingPage = () => {
   useEffect(() => {
     if (currentStep !== STEPS.SELECT_TIME || !selectedDate) return;
 
-    const today = new Date();
-    const isToday =
-      selectedDate.getFullYear() === today.getFullYear() &&
-      selectedDate.getMonth() === today.getMonth() &&
-      selectedDate.getDate() === today.getDate();
-
-    if (!isToday) return;
+    const businessTz = business?.timezone;
+    if (!isTodayInTimezone(selectedDate, businessTz)) return;
 
     const interval = setInterval(() => {
       refreshSlots(false);
@@ -203,17 +199,10 @@ const BookingPage = () => {
 
   const handleTimeSlotSelect = (slot) => {
     // Double-check the slot hasn't passed since the page loaded
-    if (selectedDate) {
-      const now = new Date();
-      const [hours, minutes] = slot.startTime.split(':').map(Number);
-      const slotDateTime = new Date(selectedDate);
-      slotDateTime.setHours(hours, minutes, 0, 0);
-      if (slotDateTime <= now) {
-        toastError('Time slot passed', 'This time slot has already passed. Please select a different time.');
-        // Re-fetch slots to update the UI
-        refreshSlots();
-        return;
-      }
+    if (isSlotPastInTimezone(selectedDate, slot.startTime, business?.timezone)) {
+      toastError('Time slot passed', 'This time slot has already passed. Please select a different time.');
+      refreshSlots();
+      return;
     }
     setSelectedTimeSlot(slot);
     setCurrentStep(STEPS.CLIENT_INFO);
@@ -255,12 +244,7 @@ const BookingPage = () => {
 
   // Check if the selected time slot has already passed
   const isSelectedSlotPast = () => {
-    if (!selectedDate || !selectedTimeSlot) return false;
-    const now = new Date();
-    const [hours, minutes] = selectedTimeSlot.startTime.split(':').map(Number);
-    const slotDateTime = new Date(selectedDate);
-    slotDateTime.setHours(hours, minutes, 0, 0);
-    return slotDateTime <= now;
+    return isSlotPastInTimezone(selectedDate, selectedTimeSlot?.startTime, business?.timezone);
   };
 
   const handleConfirmBooking = async () => {
@@ -574,7 +558,7 @@ const BookingPage = () => {
                   mode="single"
                   selected={selectedDate}
                   onSelect={handleDateSelect}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  disabled={(date) => date < todayStartInTimezone(business?.timezone)}
                   initialFocus
                 />
               </CardContent>
@@ -614,12 +598,8 @@ const BookingPage = () => {
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {availableSlots.map((slot) => {
-                      // Compute isPast client-side to handle server timezone mismatches
-                      const now = new Date();
-                      const [h, m] = slot.startTime.split(':').map(Number);
-                      const slotDate = new Date(selectedDate);
-                      slotDate.setHours(h, m, 0, 0);
-                      const isPast = slot.isPast || slotDate <= now;
+                      // Compute isPast client-side using business timezone
+                      const isPast = slot.isPast || isSlotPastInTimezone(selectedDate, slot.startTime, business?.timezone);
                       const isDisabled = isPast || !slot.available;
 
                       return (

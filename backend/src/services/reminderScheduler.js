@@ -3,6 +3,7 @@ import db from '../config/database.js';
 import { appointments, businesses, services, users } from '../config/schema.js';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { sendAppointmentReminderEmail } from './emailService.js';
+import { nowInTimezone } from '../utils/timezone.js';
 
 /**
  * REMINDER SCHEDULER SERVICE
@@ -12,19 +13,18 @@ import { sendAppointmentReminderEmail } from './emailService.js';
  */
 
 /**
- * Get tomorrow's date in YYYY-MM-DD format
+ * Get tomorrow's date in YYYY-MM-DD format for a given timezone
+ * @param {string} tz - IANA timezone string
  * @returns {string} Tomorrow's date
  */
-function getTomorrowDate() {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
-
-  const year = tomorrow.getFullYear();
-  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-  const day = String(tomorrow.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+function getTomorrowDate(tz = 'Europe/Skopje') {
+  const { date: todayStr } = nowInTimezone(tz);
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const tomorrow = new Date(Date.UTC(y, m - 1, d + 1));
+  const ty = tomorrow.getUTCFullYear();
+  const tm = String(tomorrow.getUTCMonth() + 1).padStart(2, '0');
+  const td = String(tomorrow.getUTCDate()).padStart(2, '0');
+  return `${ty}-${tm}-${td}`;
 }
 
 /**
@@ -113,7 +113,7 @@ export function startReminderScheduler() {
       console.error('📧 [REMINDER SCHEDULER] Job failed:', error);
     }
   }, {
-    timezone: process.env.TZ || 'America/New_York' // Configure timezone as needed
+    timezone: process.env.TZ || 'Europe/Skopje'
   });
 
   // Optionally run immediately on startup for testing

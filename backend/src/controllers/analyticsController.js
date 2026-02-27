@@ -1,35 +1,53 @@
 import db from '../config/database.js';
 import { appointments, services, businesses, employees } from '../config/schema.js';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { nowInTimezone } from '../utils/timezone.js';
 
-// Helper function to get business ID for current user
-const getBusinessIdForUser = async (userId) => {
+// Helper function to get business ID and timezone for current user
+const getBusinessForUser = async (userId) => {
   const business = await db
-    .select({ id: businesses.id })
+    .select({ id: businesses.id, timezone: businesses.timezone })
     .from(businesses)
     .where(eq(businesses.ownerId, userId))
     .limit(1);
 
-  return business[0]?.id || null;
+  return business[0] || null;
+};
+
+// Helper to get today's date string in business timezone
+const getTodayStr = (timezone) => {
+  const { date } = nowInTimezone(timezone || 'Europe/Skopje');
+  return date;
+};
+
+// Helper to get a date N days ago in business timezone
+const getDaysAgoStr = (timezone, days) => {
+  const todayStr = getTodayStr(timezone);
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const past = new Date(Date.UTC(y, m - 1, d - days));
+  return past.toISOString().split('T')[0];
 };
 
 // Get analytics overview for a business
 export const getAnalyticsOverview = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate } = req.query;
 
     // Default to last 30 days if no date range provided
     // Note: We don't restrict by endDate to include future appointments that may be cancelled/no-show
-    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
     const end = endDate ? endDate : null; // null means no upper limit
 
     // Get all appointments from start date onwards (including future appointments)
@@ -106,20 +124,23 @@ export const getAnalyticsOverview = async (req, res) => {
 // Get booking trends (daily/weekly/monthly)
 export const getBookingTrends = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate, groupBy = 'day' } = req.query;
 
     // Default to last 30 days
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
-    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : getTodayStr(businessTimezone);
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
     // Get appointments within date range
     const appointmentData = await db
@@ -205,19 +226,22 @@ export const getBookingTrends = async (req, res) => {
 // Get popular days of week
 export const getPopularDays = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate } = req.query;
 
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
-    const start = startDate ? startDate : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : getTodayStr(businessTimezone);
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 90);
 
     const appointmentData = await db
       .select({
@@ -279,19 +303,22 @@ export const getPopularDays = async (req, res) => {
 // Get popular time slots
 export const getPopularTimeSlots = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate } = req.query;
 
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
-    const start = startDate ? startDate : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : getTodayStr(businessTimezone);
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 90);
 
     const appointmentData = await db
       .select({
@@ -355,19 +382,22 @@ export const getPopularTimeSlots = async (req, res) => {
 // Get service performance
 export const getServicePerformance = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate } = req.query;
 
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
-    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : getTodayStr(businessTimezone);
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
     // Get all services
     const allServices = await db
@@ -436,19 +466,22 @@ export const getServicePerformance = async (req, res) => {
 // Get employee performance
 export const getEmployeePerformance = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate } = req.query;
 
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
-    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : getTodayStr(businessTimezone);
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
     // Get all employees
     const allEmployees = await db
@@ -563,19 +596,22 @@ export const getEmployeePerformance = async (req, res) => {
 // Export analytics data as CSV
 export const exportAnalytics = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate, type = 'appointments', format } = req.query;
 
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
-    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : getTodayStr(businessTimezone);
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
     if (type === 'appointments') {
       const appointmentData = await db
@@ -682,19 +718,22 @@ export const exportAnalytics = async (req, res) => {
 // Get client analytics
 export const getClientAnalytics = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate } = req.query;
 
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
-    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : getTodayStr(businessTimezone);
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
     // Get appointments in date range
     const appointmentData = await db
@@ -823,19 +862,22 @@ export const getClientAnalytics = async (req, res) => {
 // Get revenue over time
 export const getRevenueOverTime = async (req, res) => {
   try {
-    const businessId = await getBusinessIdForUser(req.user.id);
+    const businessInfo = await getBusinessForUser(req.user.id);
 
-    if (!businessId) {
+    if (!businessInfo) {
       return res.status(404).json({
         success: false,
         message: 'Business not found for this user',
       });
     }
 
+    const businessId = businessInfo.id;
+    const businessTimezone = businessInfo.timezone || 'Europe/Skopje';
+
     const { startDate, endDate, groupBy = 'day' } = req.query;
 
-    const end = endDate ? endDate : new Date().toISOString().split('T')[0];
-    const start = startDate ? startDate : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = endDate ? endDate : getTodayStr(businessTimezone);
+    const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
     // Get COMPLETED appointments in the date range
     const completedAppointments = await db

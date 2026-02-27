@@ -12,6 +12,7 @@ import {
 } from '../services/emailService.js';
 import crypto from 'crypto';
 import { emitToBusinessRoom } from '../config/socket.js';
+import { localToUTC } from '../utils/timezone.js';
 
 /**
  * APPOINTMENT CONTROLLER
@@ -91,12 +92,13 @@ export const createGuestAppointment = async (req, res) => {
     const businessData = business[0];
     const settings = businessData.settings || {};
 
-    // Validate booking settings
-    const now = new Date();
-    const appointmentDateTime = new Date(`${appointmentDate}T${startTime}`);
+    // Validate booking settings using business timezone
+    const businessTimezone = businessData.timezone || 'Europe/Skopje';
+    const nowUtc = new Date();
+    const appointmentDateTimeUtc = localToUTC(appointmentDate, startTime, businessTimezone);
 
     // Check if the requested time slot has already passed
-    if (appointmentDateTime.getTime() <= now.getTime()) {
+    if (appointmentDateTimeUtc.getTime() <= nowUtc.getTime()) {
       return res.status(400).json({
         success: false,
         message: 'This time slot has already passed. Please select a future time slot.'
@@ -107,7 +109,7 @@ export const createGuestAppointment = async (req, res) => {
     const minBookingNotice = settings.minBookingNotice ?? 2; // default 2 hours
     if (minBookingNotice > 0) {
       const minNoticeMs = minBookingNotice * 60 * 60 * 1000;
-      const timeDiff = appointmentDateTime.getTime() - now.getTime();
+      const timeDiff = appointmentDateTimeUtc.getTime() - nowUtc.getTime();
       if (timeDiff < minNoticeMs) {
         return res.status(400).json({
           success: false,
@@ -120,7 +122,7 @@ export const createGuestAppointment = async (req, res) => {
     const maxAdvanceBooking = settings.maxAdvanceBooking ?? 30; // default 30 days
     if (maxAdvanceBooking > 0) {
       const maxAdvanceMs = maxAdvanceBooking * 24 * 60 * 60 * 1000;
-      const timeDiff = appointmentDateTime.getTime() - now.getTime();
+      const timeDiff = appointmentDateTimeUtc.getTime() - nowUtc.getTime();
       if (timeDiff > maxAdvanceMs) {
         return res.status(400).json({
           success: false,

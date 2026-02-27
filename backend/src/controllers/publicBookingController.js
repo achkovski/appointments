@@ -52,6 +52,7 @@ export const getBusinessBySlug = async (req, res) => {
       businessType: business[0].businessType,
       qrCodeUrl: business[0].qrCodeUrl,
       capacityMode: business[0].capacityMode,
+      timezone: business[0].timezone || 'Europe/Skopje',
       services: activeServices.map(s => ({
         id: s.id,
         name: s.name,

@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import db from '../config/database.js';
 import { appointments, businesses } from '../config/schema.js';
 import { eq, and, lt, or, sql } from 'drizzle-orm';
+import { nowInTimezone, cutoffInTimezone } from '../utils/timezone.js';
 
 /**
  * AUTO-COMPLETE SCHEDULER SERVICE
@@ -16,55 +17,11 @@ import { eq, and, lt, or, sql } from 'drizzle-orm';
  */
 
 /**
- * Get the current date and time
- * @returns {{ currentDate: string, currentTime: string }} Current date in YYYY-MM-DD format and time in HH:MM:SS format
- */
-function getCurrentDateTime() {
-  const now = new Date();
-
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const currentDate = `${year}-${month}-${day}`;
-
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  const currentTime = `${hours}:${minutes}:${seconds}`;
-
-  return { currentDate, currentTime, now };
-}
-
-/**
- * Calculate the cutoff datetime based on grace hours
- * @param {number} graceHours - Hours to subtract from current time
- * @returns {{ cutoffDate: string, cutoffTime: string }} Cutoff date and time
- */
-function getCutoffDateTime(graceHours) {
-  const cutoff = new Date();
-  cutoff.setHours(cutoff.getHours() - graceHours);
-
-  const year = cutoff.getFullYear();
-  const month = String(cutoff.getMonth() + 1).padStart(2, '0');
-  const day = String(cutoff.getDate()).padStart(2, '0');
-  const cutoffDate = `${year}-${month}-${day}`;
-
-  const hours = String(cutoff.getHours()).padStart(2, '0');
-  const minutes = String(cutoff.getMinutes()).padStart(2, '0');
-  const seconds = String(cutoff.getSeconds()).padStart(2, '0');
-  const cutoffTime = `${hours}:${minutes}:${seconds}`;
-
-  return { cutoffDate, cutoffTime };
-}
-
-/**
  * Auto-complete past appointments for all businesses with the feature enabled
  */
 export async function autoCompletePastAppointments() {
   try {
-    const { currentDate, currentTime } = getCurrentDateTime();
-
-    console.log(`[AUTO-COMPLETE] Running auto-completion check at ${currentDate} ${currentTime}...`);
+    console.log(`[AUTO-COMPLETE] Running auto-completion check...`);
 
     // Get all businesses with auto-complete enabled
     const businessesWithAutoComplete = await db
@@ -84,10 +41,14 @@ export async function autoCompletePastAppointments() {
       }
 
       businessesProcessed++;
+      const businessTimezone = business.timezone || 'Europe/Skopje';
       const graceHours = settings.autoCompleteGraceHours ?? 24;
-      const { cutoffDate, cutoffTime } = getCutoffDateTime(graceHours);
 
-      console.log(`  [AUTO-COMPLETE] Processing business "${business.businessName}" (grace: ${graceHours}h, cutoff: ${cutoffDate} ${cutoffTime})`);
+      // Compute cutoff date/time in the business's timezone
+      const { cutoffDate, cutoffTime } = cutoffInTimezone(businessTimezone, graceHours);
+      const { date: currentDate, timeWithSeconds: currentTime } = nowInTimezone(businessTimezone);
+
+      console.log(`  [AUTO-COMPLETE] Processing business "${business.businessName}" (tz: ${businessTimezone}, grace: ${graceHours}h, cutoff: ${cutoffDate} ${cutoffTime})`);
 
       // Find confirmed appointments that are past the grace period
       // An appointment is eligible if:
@@ -137,11 +98,6 @@ export async function autoCompletePastAppointments() {
       console.log(`    Completed ${eligibleAppointments.length} appointments for this business`);
 
       // Find pending appointments that are past the grace period
-      // An appointment is eligible for cancellation if:
-      // 1. Status is PENDING
-      // 2. Either:
-      //    a. appointmentDate < cutoffDate, OR
-      //    b. appointmentDate = cutoffDate AND endTime < cutoffTime
       const eligiblePendingAppointments = await db
         .select()
         .from(appointments)
@@ -213,7 +169,7 @@ export function startAutoCompleteScheduler() {
       console.error('[AUTO-COMPLETE] Job failed:', error);
     }
   }, {
-    timezone: process.env.TZ || 'America/New_York'
+    timezone: process.env.TZ || 'Europe/Skopje'
   });
 
   // Optionally run immediately on startup for testing

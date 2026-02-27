@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { useBusiness } from '../../context/BusinessContext';
+import { nowInTimezone } from '../../utils/timezone';
 import {
   getAnalyticsOverview,
   getBookingTrends,
@@ -71,14 +72,15 @@ const Analytics = () => {
   const [clientAnalytics, setClientAnalytics] = useState(null);
   const [revenueData, setRevenueData] = useState(null);
 
-  // Calculate date range
+  // Calculate date range in business timezone
   const getDateParams = () => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - parseInt(dateRange));
+    const tz = business?.timezone || 'Europe/Skopje';
+    const { date: todayStr } = nowInTimezone(tz);
+    const [y, m, d] = todayStr.split('-').map(Number);
+    const startDate = new Date(Date.UTC(y, m - 1, d - parseInt(dateRange)));
     return {
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0]
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: todayStr
     };
   };
 
@@ -90,13 +92,7 @@ const Analytics = () => {
     setError(null);
 
     try {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - parseInt(dateRange));
-      const params = {
-        startDate: start.toISOString().split('T')[0],
-        endDate: end.toISOString().split('T')[0]
-      };
+      const params = getDateParams();
 
       // Fetch all data in parallel
       const [overviewRes, trendsRes, daysRes, timesRes, servicesRes, employeesRes, clientsRes, revenueRes] = await Promise.all([
