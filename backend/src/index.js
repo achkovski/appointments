@@ -25,6 +25,9 @@ const PORT = process.env.PORT || 5000;
 // Initialize Socket.IO
 initializeSocket(httpServer);
 
+// Trust first proxy (Render, etc.) so rate limiters see real client IPs
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
