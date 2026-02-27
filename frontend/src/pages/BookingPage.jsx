@@ -106,34 +106,55 @@ const BookingPage = () => {
     fetchBusiness();
   }, [slug]);
 
+  // Reusable function to fetch/refresh available slots
+  const refreshSlots = async (showLoading = true) => {
+    if (!selectedDate || !selectedService) return;
+
+    try {
+      if (showLoading) setSlotsLoading(true);
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      const employeeId = selectedEmployee?.id || null;
+      const response = await getAvailableSlots(slug, selectedService.id, formattedDate, employeeId);
+
+      if (response.success) {
+        setAvailableSlots(response.data.slots || []);
+        if (!response.data.available) {
+          toastError('No slots available', response.data.reason || 'Please select a different date');
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching slots:', err);
+      toastError('Error', 'Failed to load available time slots');
+      setAvailableSlots([]);
+    } finally {
+      if (showLoading) setSlotsLoading(false);
+    }
+  };
+
   // Fetch available slots when date is selected
   useEffect(() => {
-    const fetchSlots = async () => {
-      if (!selectedDate || !selectedService) return;
-
-      try {
-        setSlotsLoading(true);
-        const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-        const employeeId = selectedEmployee?.id || null;
-        const response = await getAvailableSlots(slug, selectedService.id, formattedDate, employeeId);
-
-        if (response.success) {
-          setAvailableSlots(response.data.slots || []);
-          if (!response.data.available) {
-            toastError('No slots available', response.data.reason || 'Please select a different date');
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching slots:', err);
-        toastError('Error', 'Failed to load available time slots');
-        setAvailableSlots([]);
-      } finally {
-        setSlotsLoading(false);
-      }
-    };
-
-    fetchSlots();
+    refreshSlots();
   }, [selectedDate, selectedService, selectedEmployee, slug]);
+
+  // Auto-refresh slots every 60 seconds when viewing time slots for today
+  // This ensures past slots get grayed out in near real-time
+  useEffect(() => {
+    if (currentStep !== STEPS.SELECT_TIME || !selectedDate) return;
+
+    const today = new Date();
+    const isToday =
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate();
+
+    if (!isToday) return;
+
+    const interval = setInterval(() => {
+      refreshSlots(false);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [currentStep, selectedDate, selectedService, selectedEmployee, slug]);
 
   const handleServiceSelect = async (service) => {
     setSelectedService(service);
@@ -181,6 +202,19 @@ const BookingPage = () => {
   };
 
   const handleTimeSlotSelect = (slot) => {
+    // Double-check the slot hasn't passed since the page loaded
+    if (selectedDate) {
+      const now = new Date();
+      const [hours, minutes] = slot.startTime.split(':').map(Number);
+      const slotDateTime = new Date(selectedDate);
+      slotDateTime.setHours(hours, minutes, 0, 0);
+      if (slotDateTime <= now) {
+        toastError('Time slot passed', 'This time slot has already passed. Please select a different time.');
+        // Re-fetch slots to update the UI
+        refreshSlots();
+        return;
+      }
+    }
     setSelectedTimeSlot(slot);
     setCurrentStep(STEPS.CLIENT_INFO);
   };
@@ -219,7 +253,23 @@ const BookingPage = () => {
     }
   };
 
+  // Check if the selected time slot has already passed
+  const isSelectedSlotPast = () => {
+    if (!selectedDate || !selectedTimeSlot) return false;
+    const now = new Date();
+    const [hours, minutes] = selectedTimeSlot.startTime.split(':').map(Number);
+    const slotDateTime = new Date(selectedDate);
+    slotDateTime.setHours(hours, minutes, 0, 0);
+    return slotDateTime <= now;
+  };
+
   const handleConfirmBooking = async () => {
+    // Re-validate that the selected time slot hasn't passed while the user was filling in details
+    if (isSelectedSlotPast()) {
+      toastError('Time slot passed', 'The selected time slot has already passed. Please go back and select a different time.');
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -245,7 +295,6 @@ const BookingPage = () => {
         toastSuccess('Success!', 'Your appointment has been booked');
       }
     } catch (err) {
-      console.error('Booking error:', err);
       toastError('Booking failed', err.response?.data?.message || 'Failed to create booking. Please try again.');
     } finally {
       setSubmitting(false);
@@ -564,31 +613,41 @@ const BookingPage = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {availableSlots.map((slot) => (
-                      <Button
-                        key={slot.startTime}
-                        variant={slot.available ? "outline" : "ghost"}
-                        className={`h-auto py-3 ${!slot.available ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        onClick={() => slot.available && handleTimeSlotSelect(slot)}
-                        disabled={!slot.available}
-                      >
-                        <div className="text-center">
-                          <div className="font-semibold">{slot.startTime}</div>
-                          <div className="text-xs text-gray-600">to {slot.endTime}</div>
-                          {!slot.available && slot.isPast && (
-                            <div className="text-xs text-gray-500 mt-1">Passed</div>
-                          )}
-                          {!slot.available && !slot.isPast && (
-                            <div className="text-xs text-red-600 mt-1">Booked</div>
-                          )}
-                          {slot.available && slot.spotsLeft && slot.spotsLeft !== 'unlimited' && (
-                            <div className="text-xs text-green-600 mt-1">
-                              {slot.spotsLeft} spot{slot.spotsLeft !== 1 ? 's' : ''} left
-                            </div>
-                          )}
-                        </div>
-                      </Button>
-                    ))}
+                    {availableSlots.map((slot) => {
+                      // Compute isPast client-side to handle server timezone mismatches
+                      const now = new Date();
+                      const [h, m] = slot.startTime.split(':').map(Number);
+                      const slotDate = new Date(selectedDate);
+                      slotDate.setHours(h, m, 0, 0);
+                      const isPast = slot.isPast || slotDate <= now;
+                      const isDisabled = isPast || !slot.available;
+
+                      return (
+                        <Button
+                          key={slot.startTime}
+                          variant={!isDisabled ? "outline" : "ghost"}
+                          className={`h-auto py-3 ${isPast ? 'opacity-30 cursor-not-allowed line-through' : isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          onClick={() => !isDisabled && handleTimeSlotSelect(slot)}
+                          disabled={isDisabled}
+                        >
+                          <div className="text-center">
+                            <div className="font-semibold">{slot.startTime}</div>
+                            <div className="text-xs text-gray-600">to {slot.endTime}</div>
+                            {isPast && (
+                              <div className="text-xs text-gray-400 mt-1">Passed</div>
+                            )}
+                            {!isPast && isDisabled && (
+                              <div className="text-xs text-red-600 mt-1">Booked</div>
+                            )}
+                            {!isDisabled && slot.spotsLeft && slot.spotsLeft !== 'unlimited' && (
+                              <div className="text-xs text-green-600 mt-1">
+                                {slot.spotsLeft} spot{slot.spotsLeft !== 1 ? 's' : ''} left
+                              </div>
+                            )}
+                          </div>
+                        </Button>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

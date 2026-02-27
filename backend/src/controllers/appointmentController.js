@@ -95,6 +95,14 @@ export const createGuestAppointment = async (req, res) => {
     const now = new Date();
     const appointmentDateTime = new Date(`${appointmentDate}T${startTime}`);
 
+    // Check if the requested time slot has already passed
+    if (appointmentDateTime.getTime() <= now.getTime()) {
+      return res.status(400).json({
+        success: false,
+        message: 'This time slot has already passed. Please select a future time slot.'
+      });
+    }
+
     // Check minimum booking notice (in hours)
     const minBookingNotice = settings.minBookingNotice ?? 2; // default 2 hours
     if (minBookingNotice > 0) {
@@ -236,9 +244,9 @@ export const createGuestAppointment = async (req, res) => {
     }
 
     // Calculate available slots for the requested date
-    // Allow past slots for business users (they can add appointments made by phone)
+    // Do not allow past slots for guest/client bookings
     const options = assignedEmployeeId ? { employeeId: assignedEmployeeId } : {};
-    const slotsData = await calculateAvailableSlots(businessData.id, serviceId, appointmentDate, null, true, options);
+    const slotsData = await calculateAvailableSlots(businessData.id, serviceId, appointmentDate, null, false, options);
 
     if (!slotsData.available) {
       return res.status(400).json({
@@ -248,7 +256,7 @@ export const createGuestAppointment = async (req, res) => {
       });
     }
 
-    // Verify the requested time slot is available
+    // Verify the requested time slot exists and is available
     const requestedSlot = slotsData.slots.find(slot => slot.startTime === startTime);
 
     if (!requestedSlot) {
@@ -256,6 +264,16 @@ export const createGuestAppointment = async (req, res) => {
         success: false,
         message: `Time slot ${startTime} is not available`,
         availableSlots: slotsData.slots
+      });
+    }
+
+    if (!requestedSlot.available) {
+      const reason = requestedSlot.isPast
+        ? 'This time slot has already passed. Please select a future time slot.'
+        : `Time slot ${startTime} is no longer available. It may have been booked by someone else.`;
+      return res.status(400).json({
+        success: false,
+        message: reason
       });
     }
 
