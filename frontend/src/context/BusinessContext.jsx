@@ -58,9 +58,14 @@ export const BusinessProvider = ({ children }) => {
     }
   };
 
-  // Load business data on mount
+  // Load business data on mount only if a businessId exists
   useEffect(() => {
-    fetchBusiness();
+    const businessId = getBusinessId();
+    if (businessId) {
+      fetchBusiness();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   /**
