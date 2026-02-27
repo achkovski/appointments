@@ -6,6 +6,12 @@ const createTransporter = () => {
   // For production, use real SMTP service (Gmail, SendGrid, etc.)
 
   if (process.env.NODE_ENV === 'production') {
+    // Validate required email config in production
+    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.error('EMAIL_HOST, EMAIL_USER, and EMAIL_PASSWORD must be set in production. Email sending is disabled.');
+      return null;
+    }
+
     // Production email configuration
     return nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
