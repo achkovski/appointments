@@ -75,7 +75,7 @@ const Register = () => {
       setLoading(true);
       const { confirmPassword: _unused, ...registerData } = formData;
       await register(registerData);
-      navigate('/dashboard');
+      navigate('/setup');
     } catch (err) {
       // Extract detailed error message from backend
       let errorMessage = 'Failed to create account. Please try again.';
