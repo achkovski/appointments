@@ -1,10 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   login as loginService,
   logout as logoutService,
   register as registerService,
   getCurrentUser,
-  isAuthenticated as checkAuth
 } from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -22,22 +22,23 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Initialize auth state from localStorage
+  // Initialize auth state — verify cookie is still valid via /auth/me
   useEffect(() => {
-    const initAuth = () => {
-      try {
-        const currentUser = getCurrentUser();
-        const authStatus = checkAuth();
+    const initAuth = async () => {
+      const cachedUser = getCurrentUser();
+      if (!cachedUser) {
+        setLoading(false);
+        return;
+      }
 
-        if (currentUser && authStatus) {
-          setUser(currentUser);
-          setIsAuthenticated(true);
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-      } catch (error) {
-        // Silent fail - authentication initialization failed
+      try {
+        const response = await api.get('/auth/me');
+        setUser(response.data.user);
+        setIsAuthenticated(true);
+      } catch {
+        // Cookie expired or invalid — clear stale localStorage
+        localStorage.removeItem('user');
+        localStorage.removeItem('businessId');
         setUser(null);
         setIsAuthenticated(false);
       } finally {
