@@ -18,12 +18,25 @@ import { initializeSocket } from './config/socket.js';
 
 dotenv.config();
 
+// Validate critical environment variables in production
+if (process.env.NODE_ENV === 'production') {
+  const required = ['CLIENT_URL', 'JWT_SECRET'];
+  const missing = required.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    console.error(`Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Initialize Socket.IO
 initializeSocket(httpServer);
+
+// Trust first proxy (Render, etc.) so rate limiters see real client IPs
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors({

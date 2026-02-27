@@ -130,7 +130,7 @@ const BusinessProfile = () => {
       toastSuccess("Success!", "Business profile updated successfully");
     } catch (err) {
       console.error('Error updating business:', err);
-      setError(err.response?.data?.message || 'Failed to update business profile');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to update business profile');
     } finally {
       setLoading(false);
     }

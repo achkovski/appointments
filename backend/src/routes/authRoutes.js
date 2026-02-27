@@ -27,11 +27,12 @@ import {
 const router = express.Router();
 
 // Public routes
-router.post('/register', authLimiter, validateEmail, validatePassword, validateRegistration, register);
-router.post('/login', loginLimiter, validateEmail, login);
-router.post('/verify-email', verificationLimiter, validateToken, verifyEmail);
-router.post('/forgot-password', passwordResetLimiter, validateEmail, forgotPassword);
-router.post('/reset-password', passwordResetLimiter, validateToken, validatePassword, resetPassword);
+// Validation runs before rate limiting so malformed requests don't eat rate limit budget
+router.post('/register', validateEmail, validatePassword, validateRegistration, authLimiter, register);
+router.post('/login', validateEmail, loginLimiter, login);
+router.post('/verify-email', validateToken, verificationLimiter, verifyEmail);
+router.post('/forgot-password', validateEmail, passwordResetLimiter, forgotPassword);
+router.post('/reset-password', validateToken, validatePassword, passwordResetLimiter, resetPassword);
 
 // Protected routes (require authentication)
 router.get('/me', protect, getMe);

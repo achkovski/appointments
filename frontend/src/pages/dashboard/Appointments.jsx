@@ -86,7 +86,7 @@ const Appointments = () => {
       setAppointments(appointmentsData);
     } catch (err) {
       console.error('Error fetching appointments:', err);
-      setError(err.response?.data?.message || 'Failed to load appointments');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load appointments');
     } finally {
       setLoading(false);
     }

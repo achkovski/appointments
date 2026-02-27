@@ -1,6 +1,10 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+
 /**
  * Generate JWT token for user authentication
  * @param {string} userId - User ID

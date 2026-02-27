@@ -81,7 +81,7 @@ const Login = () => {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Calendar className="h-10 w-10 text-primary" />
-            <h1 className="text-4xl font-bold">AppointMe</h1>
+            <h1 className="text-4xl font-bold">TimeSnap.io</h1>
           </div>
           <p className="text-muted-foreground">
             Modern appointment management for your business
@@ -153,7 +153,7 @@ const Login = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 AppointMe. All rights reserved.</p>
+          <p>&copy; 2026 TimeSnap.io. All rights reserved.</p>
         </div>
       </div>
     </div>

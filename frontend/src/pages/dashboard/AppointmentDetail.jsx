@@ -91,7 +91,7 @@ const AppointmentDetail = () => {
       setNotes(aptData.notes || '');
     } catch (err) {
       console.error('Error fetching appointment:', err);
-      setError(err.response?.data?.message || 'Failed to load appointment details');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load appointment details');
     } finally {
       setLoading(false);
     }

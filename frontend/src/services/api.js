@@ -15,10 +15,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Cookie is gone or expired — clear local user data and redirect
-      localStorage.removeItem('user');
-      localStorage.removeItem('businessId');
-      window.location.href = '/login';
+      const requestUrl = error.config?.url || '';
+      // Don't redirect on auth endpoints — let the component handle the error
+      const isAuthEndpoint = requestUrl.includes('/auth/login') ||
+                             requestUrl.includes('/auth/register') ||
+                             requestUrl.includes('/auth/verify-email') ||
+                             requestUrl.includes('/auth/me');
+      if (!isAuthEndpoint) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('businessId');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
