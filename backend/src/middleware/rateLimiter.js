@@ -19,12 +19,12 @@ export const authLimiter = rateLimit({
 
 /**
  * Strict rate limiter for login attempts
- * Allows 5 login attempts per 15 minutes per IP
+ * Allows 10 login attempts per 15 minutes per IP
  * Prevents brute force attacks
  */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per windowMs
+  max: 10, // Limit each IP to 10 login attempts per windowMs
   message: {
     success: false,
     error: 'Too many login attempts from this IP, please try again after 15 minutes',
@@ -52,11 +52,11 @@ export const passwordResetLimiter = rateLimit({
 
 /**
  * Rate limiter for email verification requests
- * Allows 5 verification attempts per 15 minutes per IP
+ * Allows 10 verification attempts per 15 minutes per IP
  */
 export const verificationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 verification attempts per windowMs
+  max: 10, // Limit each IP to 10 verification attempts per windowMs
   message: {
     success: false,
     error: 'Too many verification attempts from this IP, please try again after 15 minutes',
@@ -68,12 +68,12 @@ export const verificationLimiter = rateLimit({
 
 /**
  * Rate limiter for public booking endpoint
- * Allows 10 booking attempts per hour per IP
+ * Allows 20 booking attempts per hour per IP
  * Prevents spam/fake appointment creation
  */
 export const bookingLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // Limit each IP to 10 booking attempts per hour
+  max: 20, // Limit each IP to 20 booking attempts per hour
   message: {
     success: false,
     error: 'Too many booking attempts from this IP, please try again later',
@@ -85,11 +85,11 @@ export const bookingLimiter = rateLimit({
 
 /**
  * General API rate limiter
- * Allows 100 requests per 15 minutes per IP
+ * Allows 200 requests per 15 minutes per IP
  */
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 200, // Limit each IP to 200 requests per windowMs
   message: {
     success: false,
     error: 'Too many requests from this IP, please try again later',
