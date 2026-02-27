@@ -87,7 +87,7 @@ const Employees = () => {
       setServices(servicesResponse.services || []);
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError(err.response?.data?.message || 'Failed to load data');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }

@@ -206,7 +206,7 @@ const Settings = () => {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error updating settings:', err);
-      setError(err.response?.data?.message || 'Failed to update settings');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to update settings');
     } finally {
       setLoading(false);
     }
@@ -232,7 +232,7 @@ const Settings = () => {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error updating account:', err);
-      setError(err.response?.data?.message || 'Failed to update account information');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to update account information');
     } finally {
       setLoading(false);
     }
@@ -255,7 +255,7 @@ const Settings = () => {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error updating advanced settings:', err);
-      setError(err.response?.data?.message || 'Failed to update advanced settings');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to update advanced settings');
     } finally {
       setLoading(false);
     }
@@ -305,7 +305,7 @@ const Settings = () => {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error changing password:', err);
-      setError(err.response?.data?.message || 'Failed to change password');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to change password');
     } finally {
       setLoading(false);
     }
@@ -342,7 +342,7 @@ const Settings = () => {
       }, 5000);
     } catch (err) {
       console.error('Error running auto-complete:', err);
-      setError(err.response?.data?.message || 'Failed to run auto-complete');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to run auto-complete');
     } finally {
       setAutoCompleteLoading(false);
     }

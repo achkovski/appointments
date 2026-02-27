@@ -106,7 +106,7 @@ const BusinessSetup = () => {
       navigate('/dashboard');
     } catch (err) {
       console.error('Error creating business:', err);
-      setError(err.response?.data?.message || 'Failed to create business. Please try again.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to create business. Please try again.');
     } finally {
       setLoading(false);
     }

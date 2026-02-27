@@ -101,7 +101,7 @@ const Availability = () => {
       setSpecialDates(specialResponse.data || specialResponse.specialDates || []);
     } catch (err) {
       console.error('Error fetching availability data:', err);
-      setError(err.response?.data?.message || 'Failed to load availability data');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load availability data');
     } finally {
       setLoading(false);
     }

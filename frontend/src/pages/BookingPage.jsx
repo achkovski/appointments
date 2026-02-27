@@ -96,7 +96,7 @@ const BookingPage = () => {
         }
       } catch (err) {
         console.error('Error fetching business:', err);
-        setError(err.response?.data?.message || 'Failed to load business information');
+        setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load business information');
         toastError('Error', 'Could not load business information');
       } finally {
         setLoading(false);
