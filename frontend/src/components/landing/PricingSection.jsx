@@ -115,7 +115,7 @@ const PricingSection = () => {
                     {/* Original Price - Crossed Out */}
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <span className="text-2xl text-gray-400 line-through">
-                        {plan.originalPrice} ден
+                        {plan.originalPrice} ден / месец
                       </span>
                     </div>
                     {/* FREE Badge */}
