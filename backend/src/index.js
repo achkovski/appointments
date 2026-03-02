@@ -14,6 +14,7 @@ import appointmentRoutes from './routes/appointmentRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import { startReminderScheduler } from './services/reminderScheduler.js';
 import { startAutoCompleteScheduler } from './services/autoCompleteScheduler.js';
+import { startEmailConfirmationScheduler } from './services/emailConfirmationScheduler.js';
 import { initializeSocket } from './config/socket.js';
 
 dotenv.config();
@@ -103,4 +104,8 @@ httpServer.listen(PORT, () => {
   // Start the auto-complete scheduler
   startAutoCompleteScheduler();
   console.log(`✅ Auto-complete scheduler initialized`);
+
+  // Start the email confirmation expiry scheduler
+  startEmailConfirmationScheduler();
+  console.log(`📩 Email confirmation scheduler initialized`);
 });
