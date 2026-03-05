@@ -10,7 +10,7 @@ import {
   confirmAppointmentEmail,
   cancelAppointmentByClient
 } from '../controllers/appointmentController.js';
-import { bookingLimiter } from '../middleware/rateLimiter.js';
+import { bookingLimiter, apiLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
@@ -24,7 +24,7 @@ const router = express.Router();
  * @desc    Get business information and services by slug
  * @access  Public
  */
-router.get('/business/:slug', getBusinessBySlug);
+router.get('/business/:slug', apiLimiter, getBusinessBySlug);
 
 /**
  * @route   POST /api/public/available-slots
@@ -32,7 +32,7 @@ router.get('/business/:slug', getBusinessBySlug);
  * @access  Public
  * @body    { businessSlug, serviceId, date }
  */
-router.post('/available-slots', getAvailableSlots);
+router.post('/available-slots', apiLimiter, getAvailableSlots);
 
 /**
  * @route   POST /api/public/available-slots-range
@@ -40,7 +40,7 @@ router.post('/available-slots', getAvailableSlots);
  * @access  Public
  * @body    { businessSlug, serviceId, startDate, endDate }
  */
-router.post('/available-slots-range', getAvailableSlotsRange);
+router.post('/available-slots-range', apiLimiter, getAvailableSlotsRange);
 
 /**
  * @route   POST /api/public/book
@@ -54,7 +54,7 @@ router.post('/book', bookingLimiter, createGuestAppointment);
  * @desc    Confirm appointment via email token
  * @access  Public
  */
-router.post('/confirm-appointment', confirmAppointmentEmail);
+router.post('/confirm-appointment', bookingLimiter, confirmAppointmentEmail);
 
 /**
  * @route   POST /api/public/cancel-appointment
@@ -62,13 +62,13 @@ router.post('/confirm-appointment', confirmAppointmentEmail);
  * @access  Public
  * @body    { appointmentId, email, cancellationReason }
  */
-router.post('/cancel-appointment', cancelAppointmentByClient);
+router.post('/cancel-appointment', bookingLimiter, cancelAppointmentByClient);
 
 /**
  * @route   GET /api/public/service/:serviceId/employees
  * @desc    Get employees assigned to a service (for booking selection)
  * @access  Public
  */
-router.get('/service/:serviceId/employees', getEmployeesForService);
+router.get('/service/:serviceId/employees', apiLimiter, getEmployeesForService);
 
 export default router;
