@@ -168,7 +168,6 @@ export const createBusiness = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error creating business',
-      message: error.message,
     });
   }
 };
@@ -195,7 +194,6 @@ export const getBusinesses = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching businesses',
-      message: error.message,
     });
   }
 };
@@ -232,7 +230,6 @@ export const getBusinessById = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching business',
-      message: error.message,
     });
   }
 };
@@ -385,7 +382,6 @@ export const updateBusiness = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error updating business',
-      message: error.message,
     });
   }
 };
@@ -426,7 +422,6 @@ export const deleteBusiness = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error deleting business',
-      message: error.message,
     });
   }
 };
@@ -478,7 +473,6 @@ export const regenerateQRCode = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error regenerating QR code',
-      message: error.message,
     });
   }
 };

@@ -116,7 +116,6 @@ export const getAnalyticsOverview = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch analytics overview',
-      error: error.message,
     });
   }
 };
@@ -218,7 +217,6 @@ export const getBookingTrends = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch booking trends',
-      error: error.message,
     });
   }
 };
@@ -295,7 +293,6 @@ export const getPopularDays = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch popular days',
-      error: error.message,
     });
   }
 };
@@ -374,7 +371,6 @@ export const getPopularTimeSlots = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch popular time slots',
-      error: error.message,
     });
   }
 };
@@ -458,7 +454,6 @@ export const getServicePerformance = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch service performance',
-      error: error.message,
     });
   }
 };
@@ -588,7 +583,6 @@ export const getEmployeePerformance = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch employee performance',
-      error: error.message,
     });
   }
 };
@@ -710,7 +704,6 @@ export const exportAnalytics = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to export analytics',
-      error: error.message,
     });
   }
 };
@@ -854,7 +847,6 @@ export const getClientAnalytics = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch client analytics',
-      error: error.message,
     });
   }
 };
@@ -1000,7 +992,6 @@ export const getRevenueOverTime = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch revenue analytics',
-      error: error.message,
     });
   }
 };

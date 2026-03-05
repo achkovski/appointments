@@ -98,7 +98,6 @@ export const createService = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error creating service',
-      message: error.message,
     });
   }
 };
@@ -143,7 +142,6 @@ export const getServicesByBusiness = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching services',
-      message: error.message,
     });
   }
 };
@@ -193,7 +191,6 @@ export const getServiceById = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching service',
-      message: error.message,
     });
   }
 };
@@ -300,7 +297,6 @@ export const updateService = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error updating service',
-      message: error.message,
     });
   }
 };
@@ -361,7 +357,6 @@ export const toggleServiceStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error toggling service status',
-      message: error.message,
     });
   }
 };
@@ -414,7 +409,6 @@ export const deleteService = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error deleting service',
-      message: error.message,
     });
   }
 };
@@ -479,7 +473,6 @@ export const reorderServices = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error reordering services',
-      message: error.message,
     });
   }
 };

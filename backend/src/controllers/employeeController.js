@@ -111,7 +111,6 @@ export const createEmployee = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error creating employee',
-      message: error.message,
     });
   }
 };
@@ -177,7 +176,6 @@ export const getEmployeesByBusiness = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching employees',
-      message: error.message,
     });
   }
 };
@@ -224,7 +222,6 @@ export const getEmployeeById = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching employee',
-      message: error.message,
     });
   }
 };
@@ -352,7 +349,6 @@ export const updateEmployee = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error updating employee',
-      message: error.message,
     });
   }
 };
@@ -413,7 +409,6 @@ export const toggleEmployeeStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error toggling employee status',
-      message: error.message,
     });
   }
 };
@@ -478,7 +473,6 @@ export const deleteEmployee = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error deleting employee',
-      message: error.message,
     });
   }
 };
@@ -576,7 +570,6 @@ export const assignServices = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error assigning services',
-      message: error.message,
     });
   }
 };
@@ -637,7 +630,6 @@ export const removeService = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error removing service',
-      message: error.message,
     });
   }
 };
@@ -704,7 +696,6 @@ export const getEmployeesByService = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching employees',
-      message: error.message,
     });
   }
 };
