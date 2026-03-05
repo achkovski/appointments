@@ -48,7 +48,10 @@ export async function cancelExpiredUnconfirmedAppointments() {
       }
 
       // Find pending appointments that are unconfirmed and past the timeout
-      // createdAt + timeout (in minutes) < now
+      // Compute cutoff in JS to avoid sql.raw() with user-derived values
+      const timeoutMinutes = Math.max(1, parseInt(emailConfirmationTimeout, 10) || 15);
+      const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+
       const expiredAppointments = await db
         .select()
         .from(appointments)
@@ -57,7 +60,7 @@ export async function cancelExpiredUnconfirmedAppointments() {
           eq(appointments.status, 'PENDING'),
           eq(appointments.isEmailConfirmed, false),
           isNotNull(appointments.emailConfirmationToken),
-          sql`${appointments.createdAt} + interval '${sql.raw(String(emailConfirmationTimeout))} minutes' < now()`
+          sql`${appointments.createdAt} < ${cutoff.toISOString()}`
         ));
 
       if (expiredAppointments.length === 0) {
