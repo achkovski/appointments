@@ -266,9 +266,27 @@ export const getBusinessBySlug = async (req, res) => {
       orderBy: (services, { asc }) => [asc(services.displayOrder), asc(services.name)],
     });
 
+    // Return only public-safe fields (exclude ownerId, internal settings, etc.)
+    const publicBusinessData = {
+      id: business.id,
+      businessName: business.businessName,
+      slug: business.slug,
+      description: business.description,
+      address: business.address,
+      city: business.city,
+      country: business.country,
+      phone: business.phone,
+      email: business.email,
+      website: business.website,
+      businessType: business.businessType,
+      qrCodeUrl: business.qrCodeUrl,
+      capacityMode: business.capacityMode,
+      timezone: business.timezone || 'Europe/Skopje',
+    };
+
     res.status(200).json({
       success: true,
-      business,
+      business: publicBusinessData,
       services: businessServices,
     });
   } catch (error) {
@@ -276,7 +294,6 @@ export const getBusinessBySlug = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching business',
-      message: error.message,
     });
   }
 };

@@ -27,6 +27,7 @@ export const SocketProvider = ({ children }) => {
     // Create socket connection
     const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
+      withCredentials: true,
       autoConnect: true,
     });
 

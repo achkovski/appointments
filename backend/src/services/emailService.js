@@ -1,5 +1,18 @@
 import nodemailer from 'nodemailer';
 
+/**
+ * Escape HTML special characters to prevent HTML injection in email templates.
+ */
+const escapeHtml = (str) => {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 // Create reusable transporter
 const createTransporter = () => {
   // For development/testing, use Ethereal (fake SMTP service)
@@ -267,6 +280,16 @@ export const sendAppointmentConfirmationEmail = async (params) => {
     businessEmail
   } = params;
 
+  // Escape user-supplied values for HTML embedding
+  const safe = {
+    clientName: escapeHtml(clientName),
+    businessName: escapeHtml(businessName),
+    serviceName: escapeHtml(serviceName),
+    businessAddress: escapeHtml(businessAddress),
+    businessPhone: escapeHtml(businessPhone),
+    businessEmail: escapeHtml(businessEmail),
+  };
+
   const confirmationUrl = requiresConfirmation
     ? `${process.env.CLIENT_URL}/confirm-appointment?token=${confirmationToken}`
     : null;
@@ -297,15 +320,15 @@ export const sendAppointmentConfirmationEmail = async (params) => {
               <h1>${requiresConfirmation ? '📧 Please Confirm Your Appointment' : '✓ Appointment Confirmed'}</h1>
             </div>
             <div class="content">
-              <p>Hello ${clientName},</p>
+              <p>Hello ${safe.clientName},</p>
               ${requiresConfirmation
                 ? '<p>Thank you for booking an appointment! Please click the button below to confirm your booking:</p>'
                 : '<p>Your appointment has been confirmed!</p>'
               }
               <div class="appointment-details">
                 <h3>Appointment Details:</h3>
-                <p><strong>Business:</strong> ${businessName}</p>
-                <p><strong>Service:</strong> ${serviceName}</p>
+                <p><strong>Business:</strong> ${safe.businessName}</p>
+                <p><strong>Service:</strong> ${safe.serviceName}</p>
                 <p><strong>Date:</strong> ${appointmentDate}</p>
                 <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
                 ${businessAddress || businessPhone || businessEmail
@@ -313,9 +336,9 @@ export const sendAppointmentConfirmationEmail = async (params) => {
                      <h4 style="margin-bottom: 10px;">Business Contact Information:</h4>`
                   : ''
                 }
-                ${businessAddress ? `<p>📍 <strong>Address:</strong> ${businessAddress}</p>` : ''}
-                ${businessPhone ? `<p>📞 <strong>Phone:</strong> ${businessPhone}</p>` : ''}
-                ${businessEmail ? `<p>✉️  <strong>Email:</strong> ${businessEmail}</p>` : ''}
+                ${businessAddress ? `<p>📍 <strong>Address:</strong> ${safe.businessAddress}</p>` : ''}
+                ${businessPhone ? `<p>📞 <strong>Phone:</strong> ${safe.businessPhone}</p>` : ''}
+                ${businessEmail ? `<p>✉️  <strong>Email:</strong> ${safe.businessEmail}</p>` : ''}
               </div>
               ${requiresConfirmation
                 ? `<a href="${confirmationUrl}" class="button">Confirm Appointment</a>
@@ -430,6 +453,14 @@ export const sendAppointmentReminderEmail = async (params) => {
     businessEmail
   } = params;
 
+  const safe = {
+    clientName: escapeHtml(clientName),
+    businessName: escapeHtml(businessName),
+    serviceName: escapeHtml(serviceName),
+    businessPhone: escapeHtml(businessPhone),
+    businessEmail: escapeHtml(businessEmail),
+  };
+
   const mailOptions = {
     from: `"${process.env.APP_NAME || 'Appointments App'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to,
@@ -455,12 +486,12 @@ export const sendAppointmentReminderEmail = async (params) => {
               <h1>⏰ Appointment Reminder</h1>
             </div>
             <div class="content">
-              <p>Hello ${clientName},</p>
+              <p>Hello ${safe.clientName},</p>
               <p>This is a friendly reminder about your upcoming appointment:</p>
               <div class="appointment-details">
                 <h3>Appointment Details:</h3>
-                <p><strong>Business:</strong> ${businessName}</p>
-                <p><strong>Service:</strong> ${serviceName}</p>
+                <p><strong>Business:</strong> ${safe.businessName}</p>
+                <p><strong>Service:</strong> ${safe.serviceName}</p>
                 <p><strong>Date:</strong> ${appointmentDate}</p>
                 <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
               </div>
@@ -471,8 +502,8 @@ export const sendAppointmentReminderEmail = async (params) => {
               ${businessPhone || businessEmail
                 ? `<div class="contact-info">
                      <h4>Need to reschedule or have questions?</h4>
-                     ${businessPhone ? `<p>📞 Phone: ${businessPhone}</p>` : ''}
-                     ${businessEmail ? `<p>✉️  Email: ${businessEmail}</p>` : ''}
+                     ${businessPhone ? `<p>📞 Phone: ${safe.businessPhone}</p>` : ''}
+                     ${businessEmail ? `<p>✉️  Email: ${safe.businessEmail}</p>` : ''}
                    </div>`
                 : ''
               }
@@ -563,6 +594,15 @@ export const sendCancellationEmail = async (params) => {
     businessEmail
   } = params;
 
+  const safe = {
+    clientName: escapeHtml(clientName),
+    businessName: escapeHtml(businessName),
+    serviceName: escapeHtml(serviceName),
+    cancellationReason: escapeHtml(cancellationReason),
+    businessPhone: escapeHtml(businessPhone),
+    businessEmail: escapeHtml(businessEmail),
+  };
+
   const mailOptions = {
     from: `"${process.env.APP_NAME || 'Appointments App'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to,
@@ -588,19 +628,19 @@ export const sendCancellationEmail = async (params) => {
               <h1>❌ Appointment Cancelled</h1>
             </div>
             <div class="content">
-              <p>Hello ${clientName},</p>
+              <p>Hello ${safe.clientName},</p>
               <p>We regret to inform you that your appointment has been cancelled.</p>
               <div class="appointment-details">
                 <h3>Cancelled Appointment:</h3>
-                <p><strong>Business:</strong> ${businessName}</p>
-                <p><strong>Service:</strong> ${serviceName}</p>
+                <p><strong>Business:</strong> ${safe.businessName}</p>
+                <p><strong>Service:</strong> ${safe.serviceName}</p>
                 <p><strong>Date:</strong> ${appointmentDate}</p>
                 <p><strong>Time:</strong> ${startTime}</p>
               </div>
               ${cancellationReason
                 ? `<div class="reason-box">
                      <h4>Reason for Cancellation:</h4>
-                     <p>${cancellationReason}</p>
+                     <p>${safe.cancellationReason}</p>
                    </div>`
                 : ''
               }
@@ -608,8 +648,8 @@ export const sendCancellationEmail = async (params) => {
                 ? `<div class="contact-info">
                      <h4>Want to reschedule?</h4>
                      <p>Please contact us to book a new appointment:</p>
-                     ${businessPhone ? `<p>📞 Phone: ${businessPhone}</p>` : ''}
-                     ${businessEmail ? `<p>✉️  Email: ${businessEmail}</p>` : ''}
+                     ${businessPhone ? `<p>📞 Phone: ${safe.businessPhone}</p>` : ''}
+                     ${businessEmail ? `<p>✉️  Email: ${safe.businessEmail}</p>` : ''}
                    </div>`
                 : ''
               }
@@ -698,6 +738,12 @@ export const sendRescheduleEmail = async (params) => {
     newEndTime
   } = params;
 
+  const safe = {
+    clientName: escapeHtml(clientName),
+    businessName: escapeHtml(businessName),
+    serviceName: escapeHtml(serviceName),
+  };
+
   const mailOptions = {
     from: `"${process.env.APP_NAME || 'Appointments App'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to,
@@ -723,12 +769,12 @@ export const sendRescheduleEmail = async (params) => {
               <h1>📅 Appointment Rescheduled</h1>
             </div>
             <div class="content">
-              <p>Hello ${clientName},</p>
+              <p>Hello ${safe.clientName},</p>
               <p>Your appointment has been rescheduled to a new date and time.</p>
               <div class="appointment-details">
                 <h3>Business & Service:</h3>
-                <p><strong>Business:</strong> ${businessName}</p>
-                <p><strong>Service:</strong> ${serviceName}</p>
+                <p><strong>Business:</strong> ${safe.businessName}</p>
+                <p><strong>Service:</strong> ${safe.serviceName}</p>
 
                 <div class="old-details">
                   <h4>Previous Appointment:</h4>
@@ -825,6 +871,13 @@ export const sendBusinessAlertEmail = async (params) => {
     endTime
   } = params;
 
+  const safe = {
+    businessName: escapeHtml(businessName),
+    clientName: escapeHtml(clientName),
+    clientPhone: escapeHtml(clientPhone),
+    serviceName: escapeHtml(serviceName),
+  };
+
   const mailOptions = {
     from: `"${process.env.APP_NAME || 'Appointments App'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to,
@@ -850,17 +903,17 @@ export const sendBusinessAlertEmail = async (params) => {
             </div>
             <div class="content">
               <p>Hello,</p>
-              <p>A new appointment has been booked for <strong>${businessName}</strong>.</p>
+              <p>A new appointment has been booked for <strong>${safe.businessName}</strong>.</p>
               <div class="appointment-details">
                 <h3>Appointment Details:</h3>
-                <p><strong>Service:</strong> ${serviceName}</p>
+                <p><strong>Service:</strong> ${safe.serviceName}</p>
                 <p><strong>Date:</strong> ${appointmentDate}</p>
                 <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
               </div>
               <div class="client-info">
                 <h4>Client Information:</h4>
-                <p><strong>Name:</strong> ${clientName}</p>
-                <p><strong>Phone:</strong> ${clientPhone}</p>
+                <p><strong>Name:</strong> ${safe.clientName}</p>
+                <p><strong>Phone:</strong> ${safe.clientPhone}</p>
               </div>
               <p>Please log in to your dashboard to view more details and manage this appointment.</p>
             </div>
@@ -937,6 +990,13 @@ export const sendContactEmail = async (params) => {
     message
   } = params;
 
+  // Escape all user-supplied values for safe HTML embedding
+  const safeBusinessName = escapeHtml(businessName);
+  const safeClientName = escapeHtml(clientName);
+  const safeBusinessEmail = escapeHtml(businessEmail);
+  const safeSubject = escapeHtml(subject);
+  const safeMessage = escapeHtml(message);
+
   const mailOptions = {
     from: `"${businessName} via ${process.env.APP_NAME || 'Appointments App'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     replyTo: businessEmail,
@@ -959,18 +1019,18 @@ export const sendContactEmail = async (params) => {
         <body>
           <div class="container">
             <div class="header">
-              <h1>Message from ${businessName}</h1>
+              <h1>Message from ${safeBusinessName}</h1>
             </div>
             <div class="content">
-              <p>Hello ${clientName},</p>
-              <p>You have received a message from <strong>${businessName}</strong>:</p>
-              <div class="message-box">${message.replace(/\n/g, '<br>')}</div>
+              <p>Hello ${safeClientName},</p>
+              <p>You have received a message from <strong>${safeBusinessName}</strong>:</p>
+              <div class="message-box">${safeMessage.replace(/\n/g, '<br>')}</div>
               <div class="reply-info">
-                <p><strong>To reply:</strong> Simply reply to this email and your message will be sent directly to ${businessName} at ${businessEmail}.</p>
+                <p><strong>To reply:</strong> Simply reply to this email and your message will be sent directly to ${safeBusinessName} at ${safeBusinessEmail}.</p>
               </div>
             </div>
             <div class="footer">
-              <p>This message was sent via ${process.env.APP_NAME || 'Appointments App'} on behalf of ${businessName}.</p>
+              <p>This message was sent via ${process.env.APP_NAME || 'Appointments App'} on behalf of ${safeBusinessName}.</p>
               <p>&copy; ${new Date().getFullYear()} ${process.env.APP_NAME || 'Appointments App'}. All rights reserved.</p>
             </div>
           </div>
