@@ -1054,21 +1054,23 @@ This message was sent via ${process.env.APP_NAME || 'Appointments App'} on behal
     `,
   };
 
-  // Log email details for debugging
-  console.log('📧 [CONTACT EMAIL] Preparing to send:');
-  console.log('   To:', to);
-  console.log('   From:', mailOptions.from);
-  console.log('   Reply-To:', businessEmail || '(not set)');
-  console.log('   Subject:', subject);
+  // Log email details for debugging (omit sensitive content in production)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('📧 [CONTACT EMAIL] Preparing to send:');
+    console.log('   To:', to);
+    console.log('   From:', mailOptions.from);
+    console.log('   Reply-To:', businessEmail || '(not set)');
+    console.log('   Subject:', subject);
+  }
 
   if (transporter) {
     try {
       const info = await transporter.sendMail(mailOptions);
       console.log('✉️  Contact email sent successfully:', info.messageId);
-      console.log('   Accepted:', info.accepted);
-      console.log('   Rejected:', info.rejected);
 
       if (process.env.NODE_ENV !== 'production') {
+        console.log('   Accepted:', info.accepted);
+        console.log('   Rejected:', info.rejected);
         const previewUrl = nodemailer.getTestMessageUrl(info);
         if (previewUrl) {
           console.log('📧 Preview URL:', previewUrl);
@@ -1077,15 +1079,16 @@ This message was sent via ${process.env.APP_NAME || 'Appointments App'} on behal
 
       return info;
     } catch (error) {
-      console.error('📧 [EMAIL] Contact email FAILED to send:');
-      console.error('   Error:', error.message);
+      console.error('📧 [EMAIL] Contact email FAILED to send:', error.message);
       throw error;
     }
   } else {
-    console.log('📧 [EMAIL] Contact email (not sent - no email config):');
-    console.log('   To:', to);
-    console.log('   Subject:', subject);
-    console.log('   Message:', message);
+    console.log('📧 [EMAIL] Contact email (not sent - no email config)');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('   To:', to);
+      console.log('   Subject:', subject);
+      console.log('   Message:', message);
+    }
     return { messageId: 'dev-mode-no-email' };
   }
 };

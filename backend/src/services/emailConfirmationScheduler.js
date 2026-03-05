@@ -82,7 +82,7 @@ export async function cancelExpiredUnconfirmedAppointments() {
             .where(eq(appointments.id, appointment.id));
 
           totalCancelled++;
-          console.log(`    Cancelled appointment ${appointment.id} (created: ${appointment.createdAt}, client: ${appointment.clientEmail})`);
+          console.log(`    Cancelled appointment ${appointment.id} (created: ${appointment.createdAt})`);
         } catch (error) {
           console.error(`    Failed to cancel appointment ${appointment.id}:`, error.message);
         }

@@ -68,6 +68,15 @@ export const createGuestAppointment = async (req, res) => {
       });
     }
 
+    // Validate phone format
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    if (!phoneRegex.test(clientPhone) || clientPhone.length > 30) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid phone number format'
+      });
+    }
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(clientEmail)) {

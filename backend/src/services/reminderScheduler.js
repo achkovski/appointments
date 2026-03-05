@@ -74,10 +74,10 @@ export async function sendDailyReminders() {
         });
 
         sentCount++;
-        console.log(`  ✓ Sent reminder to ${apt.clientEmail} for appointment ${apt.id}`);
+        console.log(`  ✓ Sent reminder for appointment ${apt.id}`);
       } catch (error) {
         failedCount++;
-        console.error(`  ✗ Failed to send reminder to ${apt.clientEmail}:`, error.message);
+        console.error(`  ✗ Failed to send reminder for appointment ${apt.id}:`, error.message);
       }
     }
 
