@@ -1,6 +1,6 @@
 import db from '../config/database.js';
 import { appointments, services, businesses, employees } from '../config/schema.js';
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, sql, isNull } from 'drizzle-orm';
 import { nowInTimezone } from '../utils/timezone.js';
 
 // Helper function to get business ID and timezone for current user
@@ -45,62 +45,48 @@ export const getAnalyticsOverview = async (req, res) => {
 
     const { startDate, endDate } = req.query;
 
-    // Default to last 30 days if no date range provided
-    // Note: We don't restrict by endDate to include future appointments that may be cancelled/no-show
     const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
-    const end = endDate ? endDate : null; // null means no upper limit
+    const end = endDate ? endDate : null;
 
-    // Get all appointments from start date onwards (including future appointments)
-    // This ensures cancelled/no-show future appointments are counted in statistics
     const whereConditions = [
       eq(appointments.businessId, businessId),
       gte(appointments.appointmentDate, start),
     ];
 
-    // Only add end date filter if explicitly provided
     if (end) {
       whereConditions.push(lte(appointments.appointmentDate, end));
     }
 
-    const appointmentData = await db
+    // Single query with conditional counts instead of fetching all rows
+    const result = await db
       .select({
-        id: appointments.id,
-        status: appointments.status,
-        appointmentDate: appointments.appointmentDate,
-        startTime: appointments.startTime,
-        endTime: appointments.endTime,
-        serviceId: appointments.serviceId,
+        totalAppointments: sql`count(*)`.mapWith(Number),
+        confirmedAppointments: sql`count(*) filter (where ${appointments.status} = 'CONFIRMED')`.mapWith(Number),
+        completedAppointments: sql`count(*) filter (where ${appointments.status} = 'COMPLETED')`.mapWith(Number),
+        cancelledAppointments: sql`count(*) filter (where ${appointments.status} = 'CANCELLED')`.mapWith(Number),
+        pendingAppointments: sql`count(*) filter (where ${appointments.status} = 'PENDING')`.mapWith(Number),
+        noShows: sql`count(*) filter (where ${appointments.status} = 'NO_SHOW')`.mapWith(Number),
       })
       .from(appointments)
       .where(and(...whereConditions));
 
-    // Calculate statistics
-    const totalAppointments = appointmentData.length;
-    const confirmedAppointments = appointmentData.filter(a => a.status === 'CONFIRMED').length;
-    const completedAppointments = appointmentData.filter(a => a.status === 'COMPLETED').length;
-    const cancelledAppointments = appointmentData.filter(a => a.status === 'CANCELLED').length;
-    const pendingAppointments = appointmentData.filter(a => a.status === 'PENDING').length;
+    const stats = result[0];
+    const total = stats.totalAppointments;
 
-    // Calculate no-show rate
-    const noShows = appointmentData.filter(a => a.status === 'NO_SHOW').length;
-    const noShowRate = totalAppointments > 0 ? ((noShows / totalAppointments) * 100).toFixed(1) : 0;
-
-    // Calculate cancellation rate
-    const cancellationRate = totalAppointments > 0 ? ((cancelledAppointments / totalAppointments) * 100).toFixed(1) : 0;
-
-    // Calculate completion rate
-    const completionRate = totalAppointments > 0 ? ((completedAppointments / totalAppointments) * 100).toFixed(1) : 0;
+    const noShowRate = total > 0 ? ((stats.noShows / total) * 100).toFixed(1) : 0;
+    const cancellationRate = total > 0 ? ((stats.cancelledAppointments / total) * 100).toFixed(1) : 0;
+    const completionRate = total > 0 ? ((stats.completedAppointments / total) * 100).toFixed(1) : 0;
 
     res.json({
       success: true,
       data: {
         overview: {
-          totalAppointments,
-          confirmedAppointments,
-          completedAppointments,
-          cancelledAppointments,
-          pendingAppointments,
-          noShows,
+          totalAppointments: total,
+          confirmedAppointments: stats.confirmedAppointments,
+          completedAppointments: stats.completedAppointments,
+          cancelledAppointments: stats.cancelledAppointments,
+          pendingAppointments: stats.pendingAppointments,
+          noShows: stats.noShows,
           noShowRate: parseFloat(noShowRate),
           cancellationRate: parseFloat(cancellationRate),
           completionRate: parseFloat(completionRate),
@@ -137,15 +123,30 @@ export const getBookingTrends = async (req, res) => {
 
     const { startDate, endDate, groupBy = 'day' } = req.query;
 
-    // Default to last 30 days
     const end = endDate ? endDate : getTodayStr(businessTimezone);
     const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
-    // Get appointments within date range
-    const appointmentData = await db
+    // Dynamic date expression based on groupBy param
+    let dateExpr;
+    if (groupBy === 'week') {
+      // Sunday-based week start to match original JS getDay() behavior
+      dateExpr = sql`(${appointments.appointmentDate} - extract(dow from ${appointments.appointmentDate})::integer)::text`;
+    } else if (groupBy === 'month') {
+      dateExpr = sql`to_char(date_trunc('month', ${appointments.appointmentDate}::timestamp), 'YYYY-MM-DD')`;
+    } else {
+      dateExpr = sql`${appointments.appointmentDate}::text`;
+    }
+
+    // Single grouped query with conditional counts
+    const trends = await db
       .select({
-        appointmentDate: appointments.appointmentDate,
-        status: appointments.status,
+        date: dateExpr,
+        total: sql`count(*)`.mapWith(Number),
+        confirmed: sql`count(*) filter (where ${appointments.status} = 'CONFIRMED')`.mapWith(Number),
+        completed: sql`count(*) filter (where ${appointments.status} = 'COMPLETED')`.mapWith(Number),
+        cancelled: sql`count(*) filter (where ${appointments.status} = 'CANCELLED')`.mapWith(Number),
+        pending: sql`count(*) filter (where ${appointments.status} = 'PENDING')`.mapWith(Number),
+        noShow: sql`count(*) filter (where ${appointments.status} = 'NO_SHOW')`.mapWith(Number),
       })
       .from(appointments)
       .where(
@@ -155,56 +156,13 @@ export const getBookingTrends = async (req, res) => {
           lte(appointments.appointmentDate, end)
         )
       )
-      .orderBy(appointments.appointmentDate);
-
-    // Group by date
-    const trends = {};
-    appointmentData.forEach(appointment => {
-      const date = new Date(appointment.appointmentDate);
-      let key;
-
-      if (groupBy === 'week') {
-        // Get start of week (Sunday)
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        key = weekStart.toISOString().split('T')[0];
-      } else if (groupBy === 'month') {
-        // Get year-month
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
-      } else {
-        // Default to day
-        key = appointment.appointmentDate;
-      }
-
-      if (!trends[key]) {
-        trends[key] = {
-          date: key,
-          total: 0,
-          confirmed: 0,
-          completed: 0,
-          cancelled: 0,
-          pending: 0,
-          noShow: 0,
-        };
-      }
-
-      trends[key].total++;
-      if (appointment.status === 'CONFIRMED') trends[key].confirmed++;
-      if (appointment.status === 'COMPLETED') trends[key].completed++;
-      if (appointment.status === 'CANCELLED') trends[key].cancelled++;
-      if (appointment.status === 'PENDING') trends[key].pending++;
-      if (appointment.status === 'NO_SHOW') trends[key].noShow++;
-    });
-
-    // Convert to array and sort
-    const trendsArray = Object.values(trends).sort((a, b) =>
-      new Date(a.date) - new Date(b.date)
-    );
+      .groupBy(dateExpr)
+      .orderBy(dateExpr);
 
     res.json({
       success: true,
       data: {
-        trends: trendsArray,
+        trends,
         groupBy,
         dateRange: {
           start,
@@ -241,10 +199,13 @@ export const getPopularDays = async (req, res) => {
     const end = endDate ? endDate : getTodayStr(businessTimezone);
     const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 90);
 
-    const appointmentData = await db
+    // GROUP BY day-of-week with conditional counts
+    const rows = await db
       .select({
-        appointmentDate: appointments.appointmentDate,
-        status: appointments.status,
+        dayIndex: sql`extract(dow from ${appointments.appointmentDate})::integer`.mapWith(Number),
+        total: sql`count(*)`.mapWith(Number),
+        confirmed: sql`count(*) filter (where ${appointments.status} = 'CONFIRMED')`.mapWith(Number),
+        completed: sql`count(*) filter (where ${appointments.status} = 'COMPLETED')`.mapWith(Number),
       })
       .from(appointments)
       .where(
@@ -253,9 +214,10 @@ export const getPopularDays = async (req, res) => {
           gte(appointments.appointmentDate, start),
           lte(appointments.appointmentDate, end)
         )
-      );
+      )
+      .groupBy(sql`extract(dow from ${appointments.appointmentDate})`);
 
-    // Group by day of week
+    // Build full 7-day array (SQL only returns days with data)
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dayStats = dayNames.map((name, index) => ({
       day: name,
@@ -265,12 +227,10 @@ export const getPopularDays = async (req, res) => {
       completed: 0,
     }));
 
-    appointmentData.forEach(appointment => {
-      const date = new Date(appointment.appointmentDate);
-      const dayIndex = date.getDay();
-      dayStats[dayIndex].total++;
-      if (appointment.status === 'CONFIRMED') dayStats[dayIndex].confirmed++;
-      if (appointment.status === 'COMPLETED') dayStats[dayIndex].completed++;
+    rows.forEach(row => {
+      dayStats[row.dayIndex].total = row.total;
+      dayStats[row.dayIndex].confirmed = row.confirmed;
+      dayStats[row.dayIndex].completed = row.completed;
     });
 
     // Sort by total bookings
@@ -317,10 +277,13 @@ export const getPopularTimeSlots = async (req, res) => {
     const end = endDate ? endDate : getTodayStr(businessTimezone);
     const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 90);
 
-    const appointmentData = await db
+    // GROUP BY hour with conditional counts
+    const rows = await db
       .select({
-        startTime: appointments.startTime,
-        status: appointments.status,
+        hour: sql`extract(hour from ${appointments.startTime})::integer`.mapWith(Number),
+        total: sql`count(*)`.mapWith(Number),
+        confirmed: sql`count(*) filter (where ${appointments.status} = 'CONFIRMED')`.mapWith(Number),
+        completed: sql`count(*) filter (where ${appointments.status} = 'COMPLETED')`.mapWith(Number),
       })
       .from(appointments)
       .where(
@@ -329,9 +292,10 @@ export const getPopularTimeSlots = async (req, res) => {
           gte(appointments.appointmentDate, start),
           lte(appointments.appointmentDate, end)
         )
-      );
+      )
+      .groupBy(sql`extract(hour from ${appointments.startTime})`);
 
-    // Group by hour
+    // Build full 24-hour array (SQL only returns hours with data)
     const hourStats = Array.from({ length: 24 }, (_, i) => ({
       hour: i,
       hourLabel: `${String(i).padStart(2, '0')}:00`,
@@ -340,13 +304,11 @@ export const getPopularTimeSlots = async (req, res) => {
       completed: 0,
     }));
 
-    appointmentData.forEach(appointment => {
-      // startTime is a time string like "09:00:00"
-      const hour = parseInt(appointment.startTime.split(':')[0], 10);
-      if (hour >= 0 && hour < 24) {
-        hourStats[hour].total++;
-        if (appointment.status === 'CONFIRMED') hourStats[hour].confirmed++;
-        if (appointment.status === 'COMPLETED') hourStats[hour].completed++;
+    rows.forEach(row => {
+      if (row.hour >= 0 && row.hour < 24) {
+        hourStats[row.hour].total = row.total;
+        hourStats[row.hour].confirmed = row.confirmed;
+        hourStats[row.hour].completed = row.completed;
       }
     });
 
@@ -395,54 +357,44 @@ export const getServicePerformance = async (req, res) => {
     const end = endDate ? endDate : getTodayStr(businessTimezone);
     const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
-    // Get all services
-    const allServices = await db
-      .select()
-      .from(services)
-      .where(eq(services.businessId, businessId));
-
-    // Get appointments with service info
-    const appointmentData = await db
+    // Single query: LEFT JOIN appointments onto services with date filter in JOIN condition
+    const rows = await db
       .select({
-        serviceId: appointments.serviceId,
-        status: appointments.status,
+        serviceId: services.id,
+        serviceName: services.name,
+        price: services.price,
+        totalBookings: sql`count(${appointments.id})`.mapWith(Number),
+        completedBookings: sql`count(${appointments.id}) filter (where ${appointments.status} = 'COMPLETED')`.mapWith(Number),
+        cancelledBookings: sql`count(${appointments.id}) filter (where ${appointments.status} = 'CANCELLED')`.mapWith(Number),
       })
-      .from(appointments)
-      .where(
-        and(
-          eq(appointments.businessId, businessId),
-          gte(appointments.appointmentDate, start),
-          lte(appointments.appointmentDate, end)
-        )
-      );
+      .from(services)
+      .leftJoin(appointments, and(
+        eq(appointments.serviceId, services.id),
+        eq(appointments.businessId, businessId),
+        gte(appointments.appointmentDate, start),
+        lte(appointments.appointmentDate, end)
+      ))
+      .where(eq(services.businessId, businessId))
+      .groupBy(services.id, services.name, services.price)
+      .orderBy(desc(sql`count(${appointments.id})`));
 
-    // Calculate stats per service
-    const serviceStats = allServices.map(service => {
-      const serviceAppointments = appointmentData.filter(a => a.serviceId === service.id);
-      const total = serviceAppointments.length;
-      const completed = serviceAppointments.filter(a => a.status === 'COMPLETED').length;
-      const cancelled = serviceAppointments.filter(a => a.status === 'CANCELLED').length;
+    const serviceStats = rows.map(row => ({
+      serviceId: row.serviceId,
+      serviceName: row.serviceName,
+      totalBookings: row.totalBookings,
+      completedBookings: row.completedBookings,
+      cancelledBookings: row.cancelledBookings,
+      revenue: row.completedBookings * (parseFloat(row.price) || 0),
+    }));
 
-      return {
-        serviceId: service.id,
-        serviceName: service.name,
-        totalBookings: total,
-        completedBookings: completed,
-        cancelledBookings: cancelled,
-        revenue: completed * (parseFloat(service.price) || 0),
-      };
-    });
-
-    // Sort by total bookings
-    const sortedServices = serviceStats.sort((a, b) => b.totalBookings - a.totalBookings);
     const totalRevenue = serviceStats.reduce((sum, s) => sum + s.revenue, 0);
 
     res.json({
       success: true,
       data: {
-        serviceStats: sortedServices,
+        serviceStats,
         totalRevenue,
-        mostPopularService: sortedServices[0]?.serviceName || 'N/A',
+        mostPopularService: serviceStats[0]?.serviceName || 'N/A',
         dateRange: {
           start,
           end,
@@ -478,100 +430,79 @@ export const getEmployeePerformance = async (req, res) => {
     const end = endDate ? endDate : getTodayStr(businessTimezone);
     const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
-    // Get all employees
-    const allEmployees = await db
-      .select()
-      .from(employees)
-      .where(eq(employees.businessId, businessId));
-
-    // Get appointments with employee info
-    const appointmentData = await db
+    // Single query: employees LEFT JOIN appointments LEFT JOIN services
+    // Replaces 3 separate queries + O(n*m) nested .filter() loops
+    const rows = await db
       .select({
-        employeeId: appointments.employeeId,
-        status: appointments.status,
-        serviceId: appointments.serviceId,
+        employeeId: employees.id,
+        employeeName: employees.name,
+        isActive: employees.isActive,
+        totalBookings: sql`count(${appointments.id})`.mapWith(Number),
+        completedBookings: sql`count(${appointments.id}) filter (where ${appointments.status} = 'COMPLETED')`.mapWith(Number),
+        cancelledBookings: sql`count(${appointments.id}) filter (where ${appointments.status} = 'CANCELLED')`.mapWith(Number),
+        noShowBookings: sql`count(${appointments.id}) filter (where ${appointments.status} = 'NO_SHOW')`.mapWith(Number),
+        pendingBookings: sql`count(${appointments.id}) filter (where ${appointments.status} = 'PENDING')`.mapWith(Number),
+        confirmedBookings: sql`count(${appointments.id}) filter (where ${appointments.status} = 'CONFIRMED')`.mapWith(Number),
+        revenue: sql`coalesce(sum(case when ${appointments.status} = 'COMPLETED' then coalesce(${services.price}, 0) else 0 end), 0)`.mapWith(Number),
+      })
+      .from(employees)
+      .leftJoin(appointments, and(
+        eq(appointments.employeeId, employees.id),
+        eq(appointments.businessId, businessId),
+        gte(appointments.appointmentDate, start),
+        lte(appointments.appointmentDate, end)
+      ))
+      .leftJoin(services, eq(services.id, appointments.serviceId))
+      .where(eq(employees.businessId, businessId))
+      .groupBy(employees.id, employees.name, employees.isActive)
+      .orderBy(desc(sql`count(${appointments.id})`));
+
+    const employeeStats = rows.map(row => ({
+      employeeId: row.employeeId,
+      employeeName: row.employeeName,
+      isActive: row.isActive,
+      totalBookings: row.totalBookings,
+      completedBookings: row.completedBookings,
+      cancelledBookings: row.cancelledBookings,
+      noShowBookings: row.noShowBookings,
+      pendingBookings: row.pendingBookings,
+      confirmedBookings: row.confirmedBookings,
+      completionRate: row.totalBookings > 0 ? ((row.completedBookings / row.totalBookings) * 100).toFixed(1) : 0,
+      cancellationRate: row.totalBookings > 0 ? ((row.cancelledBookings / row.totalBookings) * 100).toFixed(1) : 0,
+      noShowRate: row.totalBookings > 0 ? ((row.noShowBookings / row.totalBookings) * 100).toFixed(1) : 0,
+      revenue: row.revenue,
+    }));
+
+    // Unassigned appointments (employee_id IS NULL)
+    const unassignedResult = await db
+      .select({
+        totalBookings: sql`count(*)`.mapWith(Number),
+        completedBookings: sql`count(*) filter (where ${appointments.status} = 'COMPLETED')`.mapWith(Number),
+        revenue: sql`coalesce(sum(case when ${appointments.status} = 'COMPLETED' then coalesce(${services.price}, 0) else 0 end), 0)`.mapWith(Number),
       })
       .from(appointments)
-      .where(
-        and(
-          eq(appointments.businessId, businessId),
-          gte(appointments.appointmentDate, start),
-          lte(appointments.appointmentDate, end)
-        )
-      );
+      .leftJoin(services, eq(services.id, appointments.serviceId))
+      .where(and(
+        eq(appointments.businessId, businessId),
+        isNull(appointments.employeeId),
+        gte(appointments.appointmentDate, start),
+        lte(appointments.appointmentDate, end)
+      ));
 
-    // Get services for price lookup
-    const allServices = await db
-      .select()
-      .from(services)
-      .where(eq(services.businessId, businessId));
-
-    const serviceMap = {};
-    allServices.forEach(s => {
-      serviceMap[s.id] = s;
-    });
-
-    // Calculate stats per employee
-    const employeeStats = allEmployees.map(employee => {
-      const employeeAppointments = appointmentData.filter(a => a.employeeId === employee.id);
-      const total = employeeAppointments.length;
-      const completed = employeeAppointments.filter(a => a.status === 'COMPLETED').length;
-      const cancelled = employeeAppointments.filter(a => a.status === 'CANCELLED').length;
-      const noShow = employeeAppointments.filter(a => a.status === 'NO_SHOW').length;
-      const pending = employeeAppointments.filter(a => a.status === 'PENDING').length;
-      const confirmed = employeeAppointments.filter(a => a.status === 'CONFIRMED').length;
-
-      // Calculate revenue from completed appointments
-      const revenue = employeeAppointments
-        .filter(a => a.status === 'COMPLETED')
-        .reduce((sum, a) => {
-          const service = serviceMap[a.serviceId];
-          return sum + (parseFloat(service?.price) || 0);
-        }, 0);
-
-      return {
-        employeeId: employee.id,
-        employeeName: employee.name,
-        isActive: employee.isActive,
-        totalBookings: total,
-        completedBookings: completed,
-        cancelledBookings: cancelled,
-        noShowBookings: noShow,
-        pendingBookings: pending,
-        confirmedBookings: confirmed,
-        completionRate: total > 0 ? ((completed / total) * 100).toFixed(1) : 0,
-        cancellationRate: total > 0 ? ((cancelled / total) * 100).toFixed(1) : 0,
-        noShowRate: total > 0 ? ((noShow / total) * 100).toFixed(1) : 0,
-        revenue,
-      };
-    });
-
-    // Also calculate "unassigned" stats
-    const unassignedAppointments = appointmentData.filter(a => !a.employeeId);
-    const unassignedTotal = unassignedAppointments.length;
-    const unassignedCompleted = unassignedAppointments.filter(a => a.status === 'COMPLETED').length;
-    const unassignedRevenue = unassignedAppointments
-      .filter(a => a.status === 'COMPLETED')
-      .reduce((sum, a) => {
-        const service = serviceMap[a.serviceId];
-        return sum + (parseFloat(service?.price) || 0);
-      }, 0);
-
-    // Sort by total bookings
-    const sortedEmployees = employeeStats.sort((a, b) => b.totalBookings - a.totalBookings);
-    const totalRevenue = employeeStats.reduce((sum, e) => sum + e.revenue, 0) + unassignedRevenue;
+    const unassigned = unassignedResult[0];
+    const totalRevenue = employeeStats.reduce((sum, e) => sum + e.revenue, 0) + unassigned.revenue;
 
     res.json({
       success: true,
       data: {
-        employeeStats: sortedEmployees,
+        employeeStats,
         unassigned: {
-          totalBookings: unassignedTotal,
-          completedBookings: unassignedCompleted,
-          revenue: unassignedRevenue,
+          totalBookings: unassigned.totalBookings,
+          completedBookings: unassigned.completedBookings,
+          revenue: unassigned.revenue,
         },
         totalRevenue,
-        topPerformer: sortedEmployees[0]?.employeeName || 'N/A',
+        topPerformer: employeeStats[0]?.employeeName || 'N/A',
         dateRange: {
           start,
           end,
@@ -728,84 +659,52 @@ export const getClientAnalytics = async (req, res) => {
     const end = endDate ? endDate : getTodayStr(businessTimezone);
     const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
-    // Get appointments in date range
-    const appointmentData = await db
+    // Aggregated client stats in date range (replaces fetching all individual rows)
+    const clientRows = await db
       .select({
         clientEmail: appointments.clientEmail,
-        clientFirstName: appointments.clientFirstName,
-        clientLastName: appointments.clientLastName,
-        appointmentDate: appointments.appointmentDate,
-        status: appointments.status,
-        serviceId: appointments.serviceId,
+        name: sql`trim(concat(max(${appointments.clientFirstName}), ' ', max(${appointments.clientLastName})))`,
+        visits: sql`count(*)`.mapWith(Number),
+        totalSpent: sql`coalesce(sum(case when ${appointments.status} = 'COMPLETED' then coalesce(${services.price}, 0) else 0 end), 0)`.mapWith(Number),
+        lastVisitDate: sql`max(${appointments.appointmentDate})`,
       })
       .from(appointments)
+      .leftJoin(services, eq(services.id, appointments.serviceId))
       .where(
         and(
           eq(appointments.businessId, businessId),
           gte(appointments.appointmentDate, start),
           lte(appointments.appointmentDate, end)
         )
-      );
+      )
+      .groupBy(appointments.clientEmail);
 
-    // Get ALL appointments (no date filter) to find each client's first-ever visit
-    const allAppointments = await db
+    // Get first-ever visit per client via MIN aggregate (replaces fetching ALL rows unbounded)
+    const firstVisitRows = await db
       .select({
         clientEmail: appointments.clientEmail,
-        appointmentDate: appointments.appointmentDate,
+        firstVisit: sql`min(${appointments.appointmentDate})`,
       })
       .from(appointments)
-      .where(eq(appointments.businessId, businessId));
+      .where(eq(appointments.businessId, businessId))
+      .groupBy(appointments.clientEmail);
 
-    // Build first-visit map
     const firstVisitMap = {};
-    allAppointments.forEach(a => {
-      const email = a.clientEmail;
-      if (!email) return;
-      if (!firstVisitMap[email] || a.appointmentDate < firstVisitMap[email]) {
-        firstVisitMap[email] = a.appointmentDate;
+    firstVisitRows.forEach(row => {
+      if (row.clientEmail) {
+        firstVisitMap[row.clientEmail] = row.firstVisit;
       }
     });
 
-    // Get services for price lookup
-    const allServices = await db
-      .select()
-      .from(services)
-      .where(eq(services.businessId, businessId));
-
-    const serviceMap = {};
-    allServices.forEach(s => { serviceMap[s.id] = s; });
-
-    // Group by client email
-    const clientMap = {};
-    appointmentData.forEach(a => {
-      const email = a.clientEmail;
-      if (!email) return;
-      if (!clientMap[email]) {
-        clientMap[email] = {
-          name: `${a.clientFirstName || ''} ${a.clientLastName || ''}`.trim(),
-          email,
-          visits: 0,
-          totalSpent: 0,
-          lastVisitDate: a.appointmentDate,
-        };
-      }
-      clientMap[email].visits++;
-      if (a.status === 'COMPLETED') {
-        clientMap[email].totalSpent += parseFloat(serviceMap[a.serviceId]?.price) || 0;
-      }
-      if (a.appointmentDate > clientMap[email].lastVisitDate) {
-        clientMap[email].lastVisitDate = a.appointmentDate;
-      }
-    });
-
-    const clients = Object.values(clientMap);
+    // Filter out null emails
+    const clients = clientRows.filter(c => c.clientEmail);
     const totalUniqueClients = clients.length;
 
     // New vs returning
     let newClients = 0;
     let returningClients = 0;
     clients.forEach(client => {
-      const firstVisit = firstVisitMap[client.email];
+      const firstVisit = firstVisitMap[client.clientEmail];
       if (firstVisit && firstVisit >= start && firstVisit <= end) {
         newClients++;
       } else {
@@ -820,13 +719,20 @@ export const getClientAnalytics = async (req, res) => {
       : 0;
 
     // Average bookings per client
-    const totalAppointmentsInRange = appointmentData.filter(a => a.clientEmail).length;
+    const totalAppointmentsInRange = clients.reduce((sum, c) => sum + c.visits, 0);
     const avgBookingsPerClient = totalUniqueClients > 0
       ? parseFloat((totalAppointmentsInRange / totalUniqueClients).toFixed(1))
       : 0;
 
     // Top 10 clients by visits
     const topClients = clients
+      .map(c => ({
+        name: c.name,
+        email: c.clientEmail,
+        visits: c.visits,
+        totalSpent: c.totalSpent,
+        lastVisitDate: c.lastVisitDate,
+      }))
       .sort((a, b) => b.visits - a.visits)
       .slice(0, 10);
 
@@ -871,13 +777,25 @@ export const getRevenueOverTime = async (req, res) => {
     const end = endDate ? endDate : getTodayStr(businessTimezone);
     const start = startDate ? startDate : getDaysAgoStr(businessTimezone, 30);
 
-    // Get COMPLETED appointments in the date range
-    const completedAppointments = await db
+    // Date expression for grouping
+    let dateExpr;
+    if (groupBy === 'week') {
+      dateExpr = sql`(${appointments.appointmentDate} - extract(dow from ${appointments.appointmentDate})::integer)::text`;
+    } else if (groupBy === 'month') {
+      dateExpr = sql`to_char(date_trunc('month', ${appointments.appointmentDate}::timestamp), 'YYYY-MM-DD')`;
+    } else {
+      dateExpr = sql`${appointments.appointmentDate}::text`;
+    }
+
+    // Revenue trend: JOIN services for price, GROUP BY date
+    const rows = await db
       .select({
-        appointmentDate: appointments.appointmentDate,
-        serviceId: appointments.serviceId,
+        date: dateExpr,
+        revenue: sql`coalesce(sum(${services.price}), 0)`.mapWith(Number),
+        count: sql`count(*)`.mapWith(Number),
       })
       .from(appointments)
+      .innerJoin(services, eq(services.id, appointments.serviceId))
       .where(
         and(
           eq(appointments.businessId, businessId),
@@ -886,49 +804,17 @@ export const getRevenueOverTime = async (req, res) => {
           lte(appointments.appointmentDate, end)
         )
       )
-      .orderBy(appointments.appointmentDate);
+      .groupBy(dateExpr)
+      .orderBy(dateExpr);
 
-    // Get services for price lookup
-    const allServices = await db
-      .select()
-      .from(services)
-      .where(eq(services.businessId, businessId));
-
-    const serviceMap = {};
-    allServices.forEach(s => { serviceMap[s.id] = s; });
-
-    // Group revenue by period
-    const revenueBuckets = {};
-    completedAppointments.forEach(a => {
-      const date = new Date(a.appointmentDate);
-      let key;
-
-      if (groupBy === 'week') {
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        key = weekStart.toISOString().split('T')[0];
-      } else if (groupBy === 'month') {
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
-      } else {
-        key = a.appointmentDate;
-      }
-
-      if (!revenueBuckets[key]) {
-        revenueBuckets[key] = { date: key, revenue: 0, count: 0 };
-      }
-      revenueBuckets[key].revenue += parseFloat(serviceMap[a.serviceId]?.price) || 0;
-      revenueBuckets[key].count++;
-    });
-
-    const revenueTrend = Object.values(revenueBuckets)
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .map(r => ({ ...r, revenue: parseFloat(r.revenue.toFixed(2)) }));
+    const revenueTrend = rows.map(r => ({
+      ...r,
+      revenue: parseFloat(r.revenue.toFixed(2)),
+    }));
 
     // Summary stats
-    const totalRevenue = completedAppointments.reduce((sum, a) => {
-      return sum + (parseFloat(serviceMap[a.serviceId]?.price) || 0);
-    }, 0);
-    const totalCompletedAppointments = completedAppointments.length;
+    const totalRevenue = rows.reduce((sum, r) => sum + r.revenue, 0);
+    const totalCompletedAppointments = rows.reduce((sum, r) => sum + r.count, 0);
     const daysInRange = Math.max(1, Math.ceil((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)) + 1);
 
     // Period comparison
@@ -941,11 +827,13 @@ export const getRevenueOverTime = async (req, res) => {
     const prevStartStr = prevStart.toISOString().split('T')[0];
     const prevEndStr = prevEnd.toISOString().split('T')[0];
 
-    const prevAppointments = await db
+    // Single aggregate for previous period revenue (replaces fetching all rows + JS reduce)
+    const prevResult = await db
       .select({
-        serviceId: appointments.serviceId,
+        totalRevenue: sql`coalesce(sum(${services.price}), 0)`.mapWith(Number),
       })
       .from(appointments)
+      .innerJoin(services, eq(services.id, appointments.serviceId))
       .where(
         and(
           eq(appointments.businessId, businessId),
@@ -955,9 +843,7 @@ export const getRevenueOverTime = async (req, res) => {
         )
       );
 
-    const previousRevenue = prevAppointments.reduce((sum, a) => {
-      return sum + (parseFloat(serviceMap[a.serviceId]?.price) || 0);
-    }, 0);
+    const previousRevenue = prevResult[0].totalRevenue;
 
     const revenueChange = totalRevenue - previousRevenue;
     const revenueChangePercent = previousRevenue > 0
