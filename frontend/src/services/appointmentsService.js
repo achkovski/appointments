@@ -15,6 +15,9 @@ export const getAppointments = async (businessId, filters = {}) => {
   if (filters.search) params.append('search', filters.search);
   if (filters.page) params.append('page', filters.page);
   if (filters.limit) params.append('limit', filters.limit);
+  if (filters.tab) params.append('tab', filters.tab);
+  if (filters.employeeId) params.append('employeeId', filters.employeeId);
+  if (filters.sortDirection) params.append('sortDirection', filters.sortDirection);
 
   const response = await api.get(`/appointments/business/${businessId}?${params}`);
   return response.data;

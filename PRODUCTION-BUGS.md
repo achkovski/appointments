@@ -670,6 +670,6 @@ There is no retry mechanism, no email queue, no delivery tracking, and no user n
 ## PERFORMANCE BUG FIX STATUS TRACKER
 
 - [x] **PERF-01** — Analytics JS aggregation — Rewritten: all 7 analytics functions now use SQL COUNT FILTER/GROUP BY/SUM/JOIN instead of JS .filter()/.reduce() loops
-- [ ] **PERF-02** — No server-side pagination — Implement LIMIT/OFFSET in backend
+- [x] **PERF-02** — No server-side pagination — Backend now uses SQL LIMIT/OFFSET with server-side search, tab filtering, employee filtering, and sorting. Frontend Appointments page delegates all filtering/pagination to the server. Tab counts computed via single SQL COUNT FILTER query.
 - [ ] **PERF-03** — Missing composite indexes — Add via Drizzle migration
 - [ ] **PERF-04** — Silent email failures — Add retry mechanism and user feedback

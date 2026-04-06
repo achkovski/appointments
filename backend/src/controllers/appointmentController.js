@@ -1,6 +1,6 @@
 import db from '../config/database.js';
 import { appointments, businesses, services, users, employees, employeeServices } from '../config/schema.js';
-import { eq, and, gte, lte, or } from 'drizzle-orm';
+import { eq, and, gte, lte, or, sql, desc as descOrder, asc as ascOrder } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { calculateAvailableSlots, getExistingAppointments, getEmployeesForService } from '../services/slotCalculator.js';
 import {
@@ -625,14 +625,19 @@ export const confirmAppointmentEmail = async (req, res) => {
 };
 
 /**
- * Get all appointments for a business (business owner only)
+ * Get appointments for a business (business owner only) with server-side pagination
  * GET /api/appointments/business/:businessId
  * Query: ?status=PENDING&date=YYYY-MM-DD&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ *        &page=1&limit=25&search=john&employeeId=uuid&sortDirection=desc&tab=upcoming
  */
 export const getBusinessAppointments = async (req, res) => {
   try {
     const { businessId } = req.params;
-    const { status, date, startDate, endDate } = req.query;
+    const {
+      status, date, startDate, endDate,
+      page = 1, limit = 25, search, employeeId,
+      sortDirection = 'desc', tab
+    } = req.query;
     const userId = req.user.id;
 
     // Verify business ownership
@@ -654,9 +659,15 @@ export const getBusinessAppointments = async (req, res) => {
       });
     }
 
-    // Build query with filters
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
+    const offset = (pageNum - 1) * limitNum;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Build query conditions
     let conditions = [eq(appointments.businessId, businessId)];
 
+    // Apply explicit status/date filters (backward compatibility for Overview page)
     if (status) {
       conditions.push(eq(appointments.status, status));
     }
@@ -670,7 +681,66 @@ export const getBusinessAppointments = async (req, res) => {
       conditions.push(gte(appointments.appointmentDate, startDate));
     }
 
-    // Fetch appointments with service and employee information
+    // Apply tab filter (when no explicit status/date filters — used by Appointments page)
+    if (tab && !status && !date && !startDate && !endDate) {
+      switch (tab) {
+        case 'today':
+          conditions.push(eq(appointments.appointmentDate, today));
+          conditions.push(sql`${appointments.status} != 'CANCELLED'`);
+          break;
+        case 'upcoming':
+          conditions.push(gte(appointments.appointmentDate, today));
+          conditions.push(sql`${appointments.status} NOT IN ('CANCELLED', 'COMPLETED')`);
+          break;
+        case 'past':
+          conditions.push(
+            or(
+              sql`${appointments.appointmentDate} < ${today}`,
+              eq(appointments.status, 'COMPLETED')
+            )
+          );
+          break;
+        case 'cancelled':
+          conditions.push(eq(appointments.status, 'CANCELLED'));
+          break;
+        case 'pending':
+          conditions.push(eq(appointments.status, 'PENDING'));
+          break;
+        // 'all' — no additional filter
+      }
+    }
+
+    // Apply employee filter
+    if (employeeId) {
+      if (employeeId === 'unassigned') {
+        conditions.push(sql`${appointments.employeeId} IS NULL`);
+      } else {
+        conditions.push(eq(appointments.employeeId, employeeId));
+      }
+    }
+
+    // Apply search filter (client name, email, service name)
+    if (search) {
+      const searchPattern = `%${search}%`;
+      conditions.push(
+        or(
+          sql`${appointments.clientFirstName} ILIKE ${searchPattern}`,
+          sql`${appointments.clientLastName} ILIKE ${searchPattern}`,
+          sql`(${appointments.clientFirstName} || ' ' || ${appointments.clientLastName}) ILIKE ${searchPattern}`,
+          sql`${appointments.clientEmail} ILIKE ${searchPattern}`,
+          sql`${services.name} ILIKE ${searchPattern}`
+        )
+      );
+    }
+
+    const whereClause = and(...conditions);
+
+    // Determine sort order
+    const orderClauses = sortDirection === 'asc'
+      ? [ascOrder(appointments.appointmentDate), ascOrder(appointments.startTime)]
+      : [descOrder(appointments.appointmentDate), descOrder(appointments.startTime)];
+
+    // Query 1: Fetch paginated appointments with joins
     const appointmentsList = await db.select({
       id: appointments.id,
       businessId: appointments.businessId,
@@ -700,8 +770,35 @@ export const getBusinessAppointments = async (req, res) => {
       .from(appointments)
       .leftJoin(services, eq(appointments.serviceId, services.id))
       .leftJoin(employees, eq(appointments.employeeId, employees.id))
-      .where(and(...conditions))
-      .orderBy(appointments.appointmentDate, appointments.startTime);
+      .where(whereClause)
+      .orderBy(...orderClauses)
+      .limit(limitNum)
+      .offset(offset);
+
+    // Query 2: Get total count matching current filters (for pagination)
+    const countResult = await db
+      .select({ total: sql`count(*)`.mapWith(Number) })
+      .from(appointments)
+      .leftJoin(services, eq(appointments.serviceId, services.id))
+      .where(whereClause);
+
+    const totalCount = countResult[0].total;
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    // Query 3: Get tab counts (always based on businessId only, unaffected by search/employee/tab)
+    const tabCountsResult = await db
+      .select({
+        all: sql`count(*)`.mapWith(Number),
+        today: sql`count(*) filter (where ${appointments.appointmentDate} = ${today} AND ${appointments.status} != 'CANCELLED')`.mapWith(Number),
+        upcoming: sql`count(*) filter (where ${appointments.appointmentDate} >= ${today} AND ${appointments.status} NOT IN ('CANCELLED', 'COMPLETED'))`.mapWith(Number),
+        past: sql`count(*) filter (where ${appointments.appointmentDate} < ${today} OR ${appointments.status} = 'COMPLETED')`.mapWith(Number),
+        cancelled: sql`count(*) filter (where ${appointments.status} = 'CANCELLED')`.mapWith(Number),
+        pending: sql`count(*) filter (where ${appointments.status} = 'PENDING')`.mapWith(Number),
+      })
+      .from(appointments)
+      .where(eq(appointments.businessId, businessId));
+
+    const counts = tabCountsResult[0];
 
     // Transform to include employee object for frontend compatibility
     const transformedAppointments = appointmentsList.map(apt => ({
@@ -712,7 +809,10 @@ export const getBusinessAppointments = async (req, res) => {
     res.json({
       success: true,
       data: transformedAppointments,
-      total: transformedAppointments.length
+      total: totalCount,
+      page: pageNum,
+      totalPages,
+      counts
     });
 
   } catch (error) {

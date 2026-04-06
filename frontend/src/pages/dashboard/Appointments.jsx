@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -41,39 +41,65 @@ import { getAppointments } from '../../services/appointmentsService';
 import { getEmployees } from '../../services/employeesService';
 import { useRefreshListener, REFRESH_EVENTS } from '../../components/notifications/NotificationListener';
 
+const ITEMS_PER_PAGE = 25;
+
 const Appointments = () => {
   const navigate = useNavigate();
   const { business, loading: businessLoading } = useBusiness();
   const [appointments, setAppointments] = useState([]);
-  const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [activeFilter, setActiveFilter] = useState('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [dateMode, setDateMode] = useState('single');
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sortDirection, setSortDirection] = useState('desc'); // 'asc', 'desc', or null
-  const itemsPerPage = 25;
+  const [sortDirection, setSortDirection] = useState('desc');
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [tabCounts, setTabCounts] = useState({
+    all: 0, today: 0, upcoming: 0, past: 0, cancelled: 0, pending: 0
+  });
 
-  // Fetch appointments and employees when business is loaded
+  // Debounce timer for search
+  const searchTimerRef = useRef(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1);
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
+
+  // Fetch employees once
+  useEffect(() => {
+    if (business?.id && business?.settings?.allowEmployeeBooking) {
+      fetchEmployees();
+    }
+  }, [business]);
+
+  // Fetch appointments when any filter/page/sort changes
   useEffect(() => {
     if (business?.id) {
       fetchAppointments();
-      if (business?.settings?.allowEmployeeBooking) {
-        fetchEmployees();
-      }
     }
-  }, [business]);
+  }, [business?.id, activeFilter, debouncedSearch, selectedDate, endDate, dateMode, selectedEmployee, currentPage, sortDirection]);
 
   // Listen for real-time refresh events (new appointments, status changes)
   useRefreshListener(REFRESH_EVENTS.APPOINTMENTS, useCallback(() => {
     console.log('🔄 Refreshing appointments list...');
     fetchAppointments();
-  }, [business?.id]));
+  }, [business?.id, activeFilter, debouncedSearch, selectedDate, endDate, dateMode, selectedEmployee, currentPage, sortDirection]));
 
   const fetchAppointments = async () => {
     if (!business?.id) return;
@@ -81,9 +107,39 @@ const Appointments = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getAppointments(business.id, {});
-      const appointmentsData = response.data || response.appointments || [];
-      setAppointments(appointmentsData);
+
+      const filters = {
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        sortDirection,
+      };
+
+      // Use tab-based filtering when no specific date is selected
+      if (dateMode === 'single' && selectedDate) {
+        filters.startDate = selectedDate;
+        filters.endDate = selectedDate;
+      } else if (dateMode === 'range' && selectedDate && endDate) {
+        filters.startDate = selectedDate;
+        filters.endDate = endDate;
+      } else {
+        filters.tab = activeFilter;
+      }
+
+      if (debouncedSearch) {
+        filters.search = debouncedSearch;
+      }
+
+      if (selectedEmployee) {
+        filters.employeeId = selectedEmployee;
+      }
+
+      const response = await getAppointments(business.id, filters);
+      setAppointments(response.data || []);
+      setTotalCount(response.total || 0);
+      setTotalPages(response.totalPages || 0);
+      if (response.counts) {
+        setTabCounts(response.counts);
+      }
     } catch (err) {
       console.error('Error fetching appointments:', err);
       setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load appointments');
@@ -101,101 +157,32 @@ const Appointments = () => {
     }
   };
 
-  // Filter appointments based on status and date
-  useEffect(() => {
-    let filtered = appointments;
-
-    // Apply selected date filter first (if set)
-    if (selectedDate) {
-      filtered = filtered.filter((apt) => {
-        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
-        const selected = new Date(selectedDate + 'T00:00:00');
-        return aptDate.getTime() === selected.getTime();
-      });
-    } else {
-      // Apply Today Only filter if no specific date selected
-      if (showTodayOnly) {
-        filtered = filtered.filter((apt) => {
-          const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const statusUpper = apt.status?.toUpperCase();
-          return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
-        });
-      }
-
-      // Apply status filter
-      if (activeFilter !== 'all') {
-        filtered = filtered.filter((apt) => {
-          const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-
-          const statusUpper = apt.status?.toUpperCase();
-          switch (activeFilter) {
-            case 'today':
-              return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
-            case 'upcoming':
-              return aptDate >= today && statusUpper !== 'CANCELLED' && statusUpper !== 'COMPLETED';
-            case 'past':
-              return aptDate < today || statusUpper === 'COMPLETED';
-            case 'cancelled':
-              return statusUpper === 'CANCELLED';
-            case 'pending':
-              return statusUpper === 'PENDING';
-            default:
-              return true;
-          }
-        });
-      }
-    }
-
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter((apt) =>
-        (apt.clientFirstName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (apt.clientLastName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (apt.clientEmail?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (apt.serviceName?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Apply employee filter
-    if (selectedEmployee) {
-      if (selectedEmployee === 'unassigned') {
-        filtered = filtered.filter((apt) => !apt.employeeId);
-      } else {
-        filtered = filtered.filter((apt) => apt.employeeId === selectedEmployee);
-      }
-    }
-
-    // Apply sorting
-    if (sortDirection) {
-      filtered = [...filtered].sort((a, b) => {
-        const dateA = new Date(`${a.appointmentDate}T${a.startTime}`);
-        const dateB = new Date(`${b.appointmentDate}T${b.startTime}`);
-
-        if (sortDirection === 'asc') {
-          return dateA - dateB;
-        } else {
-          return dateB - dateA;
-        }
-      });
-    }
-
-    setFilteredAppointments(filtered);
+  // Reset page when filters change
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
     setCurrentPage(1);
-  }, [activeFilter, searchQuery, appointments, showTodayOnly, selectedDate, selectedEmployee, sortDirection]);
+  };
 
-  // Pagination
-  const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentAppointments = filteredAppointments.slice(startIndex, endIndex);
+  const handleEmployeeChange = (value) => {
+    setSelectedEmployee(value);
+    setCurrentPage(1);
+  };
+
+  const handleDateChange = (value) => {
+    setSelectedDate(value);
+    setCurrentPage(1);
+  };
+
+  const handleEndDateChange = (value) => {
+    setEndDate(value);
+    setCurrentPage(1);
+  };
+
+  const handleDateModeChange = (mode) => {
+    setDateMode(mode);
+    setEndDate('');
+    setCurrentPage(1);
+  };
 
   const getStatusBadge = (status, completedAutomatically = false, cancellationReason = null) => {
     return <StatusBadge status={status} size="sm" completedAutomatically={completedAutomatically} cancellationReason={cancellationReason} />;
@@ -224,11 +211,8 @@ const Appointments = () => {
   };
 
   const toggleSort = () => {
-    setSortDirection((prev) => {
-      if (prev === 'desc') return 'asc';
-      if (prev === 'asc') return 'desc';
-      return 'desc';
-    });
+    setSortDirection((prev) => prev === 'desc' ? 'asc' : 'desc');
+    setCurrentPage(1);
   };
 
   const getSortIcon = () => {
@@ -238,47 +222,18 @@ const Appointments = () => {
   };
 
   const filterButtons = [
-    { key: 'all', label: 'All', count: appointments.length },
-    {
-      key: 'today',
-      label: 'Today',
-      count: appointments.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const statusUpper = apt.status?.toUpperCase();
-        return aptDate >= today && aptDate < tomorrow && statusUpper !== 'CANCELLED';
-      }).length
-    },
-    {
-      key: 'upcoming',
-      label: 'Upcoming',
-      count: appointments.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const statusUpper = apt.status?.toUpperCase();
-        return aptDate >= today && statusUpper !== 'CANCELLED' && statusUpper !== 'COMPLETED';
-      }).length
-    },
-    { key: 'pending', label: 'Pending', count: appointments.filter(apt => apt.status?.toUpperCase() === 'PENDING').length },
-    {
-      key: 'past',
-      label: 'Past',
-      count: appointments.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const statusUpper = apt.status?.toUpperCase();
-        return aptDate < today || statusUpper === 'COMPLETED';
-      }).length
-    },
-    { key: 'cancelled', label: 'Cancelled', count: appointments.filter(apt => apt.status?.toUpperCase() === 'CANCELLED').length },
+    { key: 'all', label: 'All', count: tabCounts.all },
+    { key: 'today', label: 'Today', count: tabCounts.today },
+    { key: 'upcoming', label: 'Upcoming', count: tabCounts.upcoming },
+    { key: 'pending', label: 'Pending', count: tabCounts.pending },
+    { key: 'past', label: 'Past', count: tabCounts.past },
+    { key: 'cancelled', label: 'Cancelled', count: tabCounts.cancelled },
   ];
 
-  if (businessLoading || loading) {
+  // Calculate pagination display
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  if (businessLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
@@ -289,7 +244,7 @@ const Appointments = () => {
     );
   }
 
-  if (error) {
+  if (error && !appointments.length) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
@@ -326,7 +281,7 @@ const Appointments = () => {
               <Button
                 key={filter.key}
                 variant={activeFilter === filter.key ? 'default' : 'outline'}
-                onClick={() => setActiveFilter(filter.key)}
+                onClick={() => handleFilterChange(filter.key)}
                 className="gap-2"
               >
                 {filter.label}
@@ -335,20 +290,6 @@ const Appointments = () => {
                 </Badge>
               </Button>
             ))}
-          </div>
-
-          {/* Today Only Toggle */}
-          <div className="flex items-center gap-2 border rounded-md px-3 py-2">
-            <label htmlFor="today-toggle" className="text-sm font-medium cursor-pointer">
-              Today Only
-            </label>
-            <input
-              id="today-toggle"
-              type="checkbox"
-              checked={showTodayOnly}
-              onChange={(e) => setShowTodayOnly(e.target.checked)}
-              className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
-            />
           </div>
         </div>
 
@@ -363,21 +304,55 @@ const Appointments = () => {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label htmlFor="date-selector" className="text-sm font-medium whitespace-nowrap">
-              Select Date:
-            </label>
+            <div className="flex rounded-md border border-input overflow-hidden">
+              <button
+                type="button"
+                onClick={() => handleDateModeChange('single')}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  dateMode === 'single'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                Date
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDateModeChange('range')}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  dateMode === 'range'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                Range
+              </button>
+            </div>
             <Input
               id="date-selector"
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-[180px]"
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="w-[160px]"
             />
-            {selectedDate && (
+            {dateMode === 'range' && (
+              <>
+                <span className="text-sm text-muted-foreground">to</span>
+                <Input
+                  id="date-end-selector"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => handleEndDateChange(e.target.value)}
+                  min={selectedDate}
+                  className="w-[160px]"
+                />
+              </>
+            )}
+            {(selectedDate || endDate) && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSelectedDate('')}
+                onClick={() => { handleDateChange(''); setEndDate(''); }}
                 className="h-10"
               >
                 Clear
@@ -394,7 +369,7 @@ const Appointments = () => {
               <select
                 id="employee-filter"
                 value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
+                onChange={(e) => handleEmployeeChange(e.target.value)}
                 className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">All staff</option>
@@ -407,7 +382,7 @@ const Appointments = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSelectedEmployee('')}
+                  onClick={() => handleEmployeeChange('')}
                   className="h-10"
                 >
                   Clear
@@ -423,7 +398,7 @@ const Appointments = () => {
         <CardHeader>
           <CardTitle>Appointment List</CardTitle>
           <CardDescription>
-            {filteredAppointments.length} appointment{filteredAppointments.length !== 1 ? 's' : ''} found
+            {totalCount} appointment{totalCount !== 1 ? 's' : ''} found
             {selectedEmployee && selectedEmployee !== 'unassigned' && (
               <> for <span className="font-medium">{employees.find(e => e.id === selectedEmployee)?.name}</span></>
             )}
@@ -433,12 +408,16 @@ const Appointments = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredAppointments.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : appointments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
               <h3 className="mb-2 text-lg font-semibold">No appointments found</h3>
               <p className="mb-4 text-sm text-muted-foreground">
-                {searchQuery
+                {debouncedSearch
                   ? 'Try adjusting your search or filters'
                   : 'Create your first appointment to get started'}
               </p>
@@ -470,7 +449,7 @@ const Appointments = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentAppointments.map((appointment, index) => (
+                  {appointments.map((appointment, index) => (
                     <TableRow
                       key={appointment.id}
                       className="cursor-pointer hover:bg-muted/50"
@@ -557,7 +536,7 @@ const Appointments = () => {
               {/* Pagination */}
               <div className="mt-4 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages} • Showing {currentAppointments.length} of {filteredAppointments.length} items
+                  Page {currentPage} of {totalPages} • Showing {appointments.length} of {totalCount} items
                 </p>
                 {totalPages > 1 && (
                   <div className="flex gap-2">
@@ -570,17 +549,39 @@ const Appointments = () => {
                       Previous
                     </Button>
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                          className="w-10"
-                        >
-                          {page}
-                        </Button>
-                      ))}
+                      {(() => {
+                        // Show max 7 page buttons with ellipsis for large page counts
+                        const pages = [];
+                        const maxButtons = 7;
+                        if (totalPages <= maxButtons) {
+                          for (let i = 1; i <= totalPages; i++) pages.push(i);
+                        } else {
+                          pages.push(1);
+                          let start = Math.max(2, currentPage - 1);
+                          let end = Math.min(totalPages - 1, currentPage + 1);
+                          if (currentPage <= 3) { start = 2; end = 5; }
+                          if (currentPage >= totalPages - 2) { start = totalPages - 4; end = totalPages - 1; }
+                          if (start > 2) pages.push('...');
+                          for (let i = start; i <= end; i++) pages.push(i);
+                          if (end < totalPages - 1) pages.push('...');
+                          pages.push(totalPages);
+                        }
+                        return pages.map((page, idx) =>
+                          page === '...' ? (
+                            <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
+                          ) : (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className="w-10"
+                            >
+                              {page}
+                            </Button>
+                          )
+                        );
+                      })()}
                     </div>
                     <Button
                       variant="outline"
